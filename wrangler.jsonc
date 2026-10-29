@@ -9,8 +9,8 @@
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_M_R1KxSmdgihDTFjdp_NQg_2fdMV8XW",
     "NEXT_PUBLIC_SUPABASE_SCHEMA": "public",
     "NEXT_PUBLIC_MEDIA_PREFIX": "sexytw",
-    "SITE_URL": "https://sexytw-site.nning00721.workers.dev",
-    "NEXT_PUBLIC_SITE_URL": "https://sexytw-site.nning00721.workers.dev"
+    "SITE_URL": "https://sexytw.cc",
+    "NEXT_PUBLIC_SITE_URL": "https://sexytw.cc"
   },
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],

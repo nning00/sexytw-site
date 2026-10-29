@@ -100,6 +100,11 @@ export default async function Home() {
         {quickRegions.map((region) => <Link href={region.href} key={region.href}>{region.name}</Link>)}
       </nav>
 
+      <section className="tw-discover section" aria-labelledby="tw-discover-title">
+        <div><p className="eyebrow">FIND YOUR DESTINATION</p><h2 id="tw-discover-title">從喜歡的城市開始</h2><p>依地區瀏覽公開形象，讓每次探索都更簡單。</p></div>
+        <div className="tw-destination-grid">{quickRegionSource.map(region => <article key={region.slug}><Link className="tw-region-title" href={`/regions/${region.slug}/overview`}>{region.name}<span aria-hidden="true">↗</span></Link><div>{region.cities.map(city => <Link key={city.slug} href={`/regions/${region.slug}/${city.slug}`}>{city.name}</Link>)}</div></article>)}</div>
+      </section>
+
       <section className="intro section" id="about">
         <div className="intro-title">
           <span className="section-index">01</span>
