@@ -6,7 +6,7 @@ import { supabaseSchema } from "@/lib/site-instance";
 // this site's publishable (RLS-protected) browser configuration as a safe fallback.
 // Supabase publishable keys are designed to be present in browser JavaScript.
 const browserSupabaseUrl = "https://lsxrpubpbnshlqnnddgu.supabase.co";
-const browserSupabasePublishableKey = "";
+const browserSupabasePublishableKey = "sb_publishable_M_R1KxSmdgihDTFjdp_NQg_2fdMV8XW";
 
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || browserSupabaseUrl;
