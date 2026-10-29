@@ -1,0 +1,27 @@
+name: Sync public profiles to sexytw.cc
+
+on:
+  # Schedule intentionally disabled until the independent destination is verified.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sexytw-profile-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Synchronize profiles to sexytw.cc
+        env:
+          PROFILE_SYNC_ENDPOINT: ${{ secrets.PROFILE_SYNC_ENDPOINT }}
+          PROFILE_SYNC_SECRET: ${{ secrets.PROFILE_SYNC_SECRET }}
+        run: node scripts/edc-profile-sync.mjs --commit
