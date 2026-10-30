@@ -190,7 +190,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     chunks.push(profiles.slice(index, index + batchSize));
   }
   const totals = { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: 0 };
-  for (const [index, chunk] of chunks.entries()) {
+  async function syncChunk(chunk, index) {
     let response;
     let terminalHttpError = "";
     for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -207,23 +207,37 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
     }
     if (!response) {
-      totals.errors += chunk.length;
       console.error(`批次 ${index + 1}/${chunks.length} 已略過並繼續後續資料：${terminalHttpError}`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      continue;
+      return { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: chunk.length };
     }
-    for (const key of ["create", "update", "unchanged", "pendingReview", "skippedCity"]) totals[key] += response?.summary?.[key] || 0;
     const responseErrors = response?.result?.errors || [];
     const warningErrors = responseErrors.filter((item) => item?.message === "image-download-404");
     const blockingErrors = responseErrors.filter((item) => item?.message !== "image-download-404");
-    totals.warnings += warningErrors.length;
-    totals.errors += blockingErrors.length;
     console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify(response?.summary || response)}`);
     if (warningErrors.length) {
       console.warn(`批次警告（來源圖片不存在，已跳過）：${JSON.stringify(warningErrors)}`);
     }
     if (blockingErrors.length) {
       console.error(`批次錯誤：${JSON.stringify(blockingErrors)}`);
+    }
+    return {
+      create: response?.summary?.create || 0,
+      update: response?.summary?.update || 0,
+      unchanged: response?.summary?.unchanged || 0,
+      pendingReview: response?.summary?.pendingReview || 0,
+      skippedCity: response?.summary?.skippedCity || 0,
+      warnings: warningErrors.length,
+      errors: blockingErrors.length,
+    };
+  }
+  // Three small requests in parallel keep each Worker invocation lightweight
+  // while finishing the full catalogue comfortably within the Actions limit.
+  const concurrency = 3;
+  for (let index = 0; index < chunks.length; index += concurrency) {
+    const wave = chunks.slice(index, index + concurrency);
+    const results = await Promise.all(wave.map((chunk, offset) => syncChunk(chunk, index + offset)));
+    for (const result of results) {
+      for (const key of Object.keys(totals)) totals[key] += result[key] || 0;
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
