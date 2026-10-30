@@ -63,6 +63,19 @@ function clean(value: unknown, max = 2000) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
+function syncErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const message = "message" in error && typeof error.message === "string" ? error.message : "";
+    const code = "code" in error && typeof error.code === "string" ? error.code : "";
+    const details = "details" in error && typeof error.details === "string" ? error.details : "";
+    const parts = [code, message, details].filter(Boolean);
+    if (parts.length) return parts.join(": ");
+    try { return JSON.stringify(error); } catch { return "object-error"; }
+  }
+  return String(error || "unknown-error");
+}
+
 function validSourceUrl(value: string) {
   try {
     const url = new URL(value);
@@ -339,7 +352,7 @@ export async function POST(request: Request) {
       if (current) result.updated += 1;
       else result.created += 1;
     } catch (error) {
-      result.errors.push({ sourceKey: profile.sourceKey, message: error instanceof Error ? error.message : "unknown-error" });
+      result.errors.push({ sourceKey: profile.sourceKey, message: syncErrorMessage(error) });
     }
   }
 
