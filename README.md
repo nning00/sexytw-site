@@ -8,7 +8,7 @@
 - `components/`：共用版面及後台表單
 - `lib/`：Supabase、SEO、圖片與同步共用邏輯
 - `scripts/edc-profile-sync.mjs`：公開資料同步程式
-- `.github/workflows/profile-sync.yml`：手動同步；定時排程暫停待驗證
+- `.github/workflows/profile-sync.yml`：每 6 小時自動同步，亦可手動執行
 - `.github/workflows/deploy-worker.yml`：手動部署 Cloudflare Worker
 - `wrangler.jsonc`：獨立 Cloudflare Worker 設定
 
@@ -28,4 +28,4 @@ pnpm build
 - `PROFILE_SYNC_SECRET`
 - `INDEXNOW_KEY`
 
-暫定網域為 `https://sexytw.cc`，尚未綁定。使用獨立東京 Supabase 專案 `lsxrpubpbnshlqnnddgu`，不得設定原站資料庫或同步密鑰。
+正式網域為 `https://sexytw.cc`。使用獨立東京 Supabase 專案 `lsxrpubpbnshlqnnddgu`，不得設定原站資料庫或同步密鑰。

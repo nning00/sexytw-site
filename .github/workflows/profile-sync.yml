@@ -1,7 +1,9 @@
 name: Sync public profiles to sexytw.cc
 
 on:
-  # Schedule intentionally disabled until the independent destination is verified.
+  schedule:
+    # Every six hours. GitHub cron uses UTC: 00:30, 06:30, 12:30 and 18:30 in Taiwan.
+    - cron: "30 16,22,4,10 * * *"
   workflow_dispatch:
 
 permissions:

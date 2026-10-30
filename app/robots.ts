@@ -9,7 +9,11 @@ const siteUrl = (
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", disallow: "/" },
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: ["/admin", "/api"],
+    },
     sitemap: `${siteUrl}/sitemap.xml`,
   };
 }
