@@ -13,6 +13,26 @@ import { absoluteUrl, breadcrumbStructuredData, imageStructuredData, siteUrl } f
 type ContextualArticleLink = { href: string; label: string };
 
 const contextualArticleLinks: Record<string, ContextualArticleLink[]> = {
+  "fixed-location-vs-delivery-service-guide": [
+    { href: "/services/outing-companion", label: "了解外送安排的基本流程與服務方式" },
+    { href: "/articles/first-time-service-selection-checklist", label: "第一次挑選服務前的需求整理清單" },
+    { href: "/articles/online-contact-privacy-payment-safety", label: "線上聯絡、個資與付款安全原則" },
+  ],
+  "taipei-delivery-booking-process-guide": [
+    { href: "/regions/north/taipei", label: "瀏覽台北地區公開資訊" },
+    { href: "/articles/advance-vs-same-day-booking-strategy", label: "提前預約與當天詢問怎麼選" },
+    { href: "/articles/booking-time-location-communication-guide", label: "熱門時段的時間、地點與溝通攻略" },
+  ],
+  "hotel-outcall-privacy-safety-checklist": [
+    { href: "/articles/online-contact-privacy-payment-safety", label: "線上聯絡與付款防詐完整原則" },
+    { href: "/articles/booking-privacy-payment-safety-checklist", label: "可疑預約資訊與見面前安全清單" },
+    { href: "/services/profile-consultation", label: "先了解公開資訊與諮詢方式" },
+  ],
+  "hotel-relaxation-before-after-guide": [
+    { href: "/articles/healthy-relaxation-rhythm-guide", label: "從呼吸到恢復的健康舒壓節奏" },
+    { href: "/articles/after-work-relaxation-wellness-guide", label: "下班後打造高品質放鬆流程" },
+    { href: "/services/booking-time", label: "安排適合自己的時段與行程" },
+  ],
   "how-to-spot-fake-photos-and-scams": [
     { href: "/articles/delivery-tea-avoiding-traps", label: "外送茶如何避免踩雷？新手挑選與安全守則" },
     { href: "/articles/delivery-tea-booking-guide", label: "外送茶怎麼預約？線上挑選、流程與注意事項" },
@@ -163,3 +183,4 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       </section>}
     </main></>);
 }
+
