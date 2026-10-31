@@ -36,7 +36,7 @@ a,button,input,select,textarea{touch-action:manipulation}
 .home-page .intro h2{font-size:clamp(28px,3.2vw,46px);line-height:1.4;color:var(--ink)}
 .home-page .intro-copy{background:none;border:0;border-radius:0;padding:0;box-shadow:none;max-width:760px;margin:auto;line-height:1.95}
 .home-page .gallery-section{background:#edf1f5;padding-block:72px}
-.home-page .gallery-heading{display:block;max-width:920px;margin:0 auto 36px;text-align:center}.home-page .gallery-heading>p{margin:20px auto 0;max-width:640px;line-height:1.9}
+.home-page .gallery-heading{display:block;max-width:920px;margin:0 auto 36px;text-align:center}.home-page .gallery-heading>p{margin:20px auto 0;max-width:640px;line-height:1.9;color:var(--muted)!important;opacity:1!important}
 .home-page .gallery-heading h2{font-size:clamp(28px,3.2vw,46px);color:var(--ink)}
 .home-page .gallery-grid{columns:3;column-gap:20px;max-width:1200px;margin:auto}
 .home-page .gallery-item,.home-page .gallery-item[class*="item-"]{border:0;border-radius:6px;box-shadow:none;margin-bottom:20px}

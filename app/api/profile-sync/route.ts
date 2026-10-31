@@ -316,8 +316,13 @@ export async function POST(request: Request) {
         result.unchanged += 1;
         continue;
       }
-      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}`;
-      const seoDescription = `${profile.cityName}${profile.details.serviceMethod || "成人形象"}資訊｜${profile.displayName}${profile.details.age ? `，${profile.details.age}` : ""}${profile.details.height ? `、${profile.details.height}` : ""}${profile.details.cup ? `、${profile.details.cup}罩杯` : ""}。查看公開照片、服務地區與聯絡前須知。`;
+      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
+      const profileFacts = [
+        profile.details.age ? `${profile.details.age}歲` : "",
+        profile.details.height ? `${profile.details.height}cm` : "",
+        profile.details.cup ? `${profile.details.cup}罩杯` : "",
+      ].filter(Boolean).join("、");
+      const seoDescription = `${profile.cityName}${profile.details.serviceMethod || "成人形象"}資訊｜${profile.displayName}${profileFacts ? `，${profileFacts}` : ""}。查看公開照片、基本資料、服務地區與聯絡前注意事項；實際安排請以正式聯絡及安全確認為準。`;
       const payload = {
         slug: current?.slug || `source-${profile.sourceKey}`,
         display_name: profile.displayName,

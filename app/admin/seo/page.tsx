@@ -7,6 +7,7 @@ type Article = { id: string; slug: string; title: string; status: string; seo_ti
 type Category = { id: string; slug: string; name: string; published: boolean; seo_title: string | null; seo_description: string | null };
 type City = { id: string; slug: string; name: string; summary: string | null; seo_title: string | null; seo_description: string | null; region_id: string; published: boolean };
 type Region = { id: string; name: string };
+type Service = { slug: string; title: string; seo_title?: string | null; seo_description?: string | null };
 type Setting = { key: string; value: unknown };
 type Issue<T> = { item: T; reason: string; value?: string };
 
@@ -27,7 +28,7 @@ export default async function AdminSeoPage() {
     supabase.from("article_categories").select("id,slug,name,published,seo_title,seo_description"),
     supabase.from("cities").select("id,slug,name,summary,seo_title,seo_description,region_id,published"),
     supabase.from("regions").select("id,name"),
-    supabase.from("site_settings").select("key,value").in("key", ["brand", "seo"]),
+    supabase.from("site_settings").select("key,value").in("key", ["brand", "seo", "services"]),
   ]);
   const profileRows: Profile[] = [];
   const pageSize = 1000;
@@ -51,6 +52,8 @@ export default async function AdminSeoPage() {
   const regionIds = new Set(regions.map((region) => region.id));
   const brandName = String(settingObject(settings, "brand").name || "範例品牌");
   const defaultSeo = settingObject(settings, "seo");
+  const servicesValue = settings.find((item) => item.key === "services")?.value;
+  const services = (Array.isArray(servicesValue) ? servicesValue : []) as Service[];
 
   const profileTitleDuplicates = flattenDuplicateIssues(duplicateGroups(profiles, (item) => item.seo_title), (item) => item.seo_title);
   const profileDescriptionDuplicates = flattenDuplicateIssues(duplicateGroups(profiles, (item) => item.seo_description), (item) => item.seo_description);
@@ -58,12 +61,15 @@ export default async function AdminSeoPage() {
   const articleDescriptionDuplicates = flattenDuplicateIssues(duplicateGroups(articles.filter((item) => item.status === "published"), (item) => item.seo_description), (item) => item.seo_description);
   const categoryTitleDuplicates = flattenDuplicateIssues(duplicateGroups(categories.filter((item) => item.published), (item) => item.seo_title), (item) => item.seo_title);
   const cityTitleDuplicates = flattenDuplicateIssues(duplicateGroups(cities.filter((item) => item.published && regionIds.has(item.region_id)), (item) => item.seo_title), (item) => item.seo_title);
+  const serviceTitleDuplicates = flattenDuplicateIssues(duplicateGroups(services, (item) => item.seo_title ?? null), (item) => item.seo_title ?? null);
+  const serviceDescriptionDuplicates = flattenDuplicateIssues(duplicateGroups(services, (item) => item.seo_description ?? null), (item) => item.seo_description ?? null);
 
   const incompleteProfiles: Issue<Profile>[] = profiles.filter((item) => !clean(item.seo_title) || !clean(item.seo_description)).map((item) => ({ item, reason: !clean(item.seo_title) ? "缺少 SEO 標題" : "缺少 SEO 描述" }));
   const incompleteArticles: Issue<Article>[] = articles.filter((item) => item.status === "published" && (!clean(item.seo_title) || !clean(item.seo_description))).map((item) => ({ item, reason: !clean(item.seo_title) ? "缺少 SEO 標題" : "缺少 SEO 描述" }));
   const incompleteCategories: Issue<Category>[] = categories.filter((item) => item.published && (!clean(item.seo_title) || !clean(item.seo_description))).map((item) => ({ item, reason: !clean(item.seo_title) ? "缺少 SEO 標題" : "缺少 SEO 描述" }));
   const incompleteCities: Issue<City>[] = cities.filter((item) => item.published && regionIds.has(item.region_id) && (!clean(item.summary) || !clean(item.seo_title) || !clean(item.seo_description))).map((item) => ({ item, reason: !clean(item.summary) ? "缺少城市介紹" : !clean(item.seo_title) ? "缺少 SEO 標題" : "缺少 SEO 描述" }));
   const orphanCities: Issue<City>[] = cities.filter((item) => !regionIds.has(item.region_id)).map((item) => ({ item, reason: `所屬專區不存在（${item.region_id}）` }));
+  const incompleteServices: Issue<Service>[] = services.filter((item) => !clean(item.seo_title) || !clean(item.seo_description)).map((item) => ({ item, reason: !clean(item.seo_title) ? "缺少 SEO 標題" : "缺少 SEO 描述" }));
 
   const textIssues: Array<Issue<Profile | Article | Category | City> & { href: string; label: string }> = [];
   for (const item of profiles) for (const value of [item.seo_title, item.seo_description]) { const reason = textReason(value); if (reason) textIssues.push({ item, reason, value: clean(value), href: `/admin/profiles/${item.id}/edit`, label: item.display_name }); }
@@ -74,7 +80,9 @@ export default async function AdminSeoPage() {
   const weakProfiles: Issue<Profile>[] = profiles.flatMap((item) => {
     const issues: Issue<Profile>[] = [];
     const seoTitle = clean(item.seo_title);
+    const seoDescription = clean(item.seo_description);
     if (seoTitle && seoTitle.length < 8) issues.push({ item, reason: "SEO 標題過度簡略，建議加入城市、公開名稱或特徵", value: seoTitle });
+    if (seoDescription && seoDescription.length < 45) issues.push({ item, reason: "SEO 描述過短，建議補充公開資料、服務地區與安全確認重點", value: seoDescription });
     if (looksLikeKeywordList(item.seo_description)) issues.push({ item, reason: "SEO 描述像關鍵字清單，建議改成自然完整句", value: clean(item.seo_description) });
     return issues;
   });
@@ -83,8 +91,8 @@ export default async function AdminSeoPage() {
   const categoryBrandIssues: Issue<Category>[] = categories.filter((item) => categoryBrandPattern.test(clean(item.seo_title))).map((item) => ({ item, reason: `標題已包含「${brandName}」，前台還會自動附加一次`, value: clean(item.seo_title) }));
   const defaultSeoIssues = [!clean(String(defaultSeo.default_title ?? "")) ? "缺少全站預設 SEO 標題" : "", !clean(String(defaultSeo.default_description ?? "")) ? "缺少全站預設 SEO 描述" : ""].filter(Boolean);
 
-  const duplicateCount = profileTitleDuplicates.length + profileDescriptionDuplicates.length + articleTitleDuplicates.length + articleDescriptionDuplicates.length + categoryTitleDuplicates.length + cityTitleDuplicates.length;
-  const incompleteCount = incompleteProfiles.length + incompleteArticles.length + incompleteCategories.length + incompleteCities.length + defaultSeoIssues.length;
+  const duplicateCount = profileTitleDuplicates.length + profileDescriptionDuplicates.length + articleTitleDuplicates.length + articleDescriptionDuplicates.length + categoryTitleDuplicates.length + cityTitleDuplicates.length + serviceTitleDuplicates.length + serviceDescriptionDuplicates.length;
+  const incompleteCount = incompleteProfiles.length + incompleteArticles.length + incompleteCategories.length + incompleteCities.length + incompleteServices.length + defaultSeoIssues.length;
   const qualityCount = textIssues.length + weakProfiles.length + categoryBrandIssues.length;
   const issueCount = duplicateCount + incompleteCount + qualityCount + orphanCities.length;
 
@@ -101,6 +109,7 @@ export default async function AdminSeoPage() {
     <SeoSection title="形象描述品質" description="標題不應只有過度簡略的通用詞，描述也不應只是大量堆疊地名或關鍵字。" count={weakProfiles.length}>{weakProfiles.map((issue, index) => <IssueLink key={`${issue.item.id}-${index}`} href={`/admin/profiles/${issue.item.id}/edit`} label={issue.item.display_name} reason={issue.reason} value={issue.value} />)}</SeoSection>
     <SeoSection title="形象 SEO 重複" description="直接比較後台原始標題與描述，避免每位形象使用同一組關鍵字。" count={profileTitleDuplicates.length + profileDescriptionDuplicates.length}>{[...profileTitleDuplicates, ...profileDescriptionDuplicates].map((issue, index) => <IssueLink key={`${issue.item.id}-${index}`} href={`/admin/profiles/${issue.item.id}/edit`} label={issue.item.display_name} reason={issue.reason} value={issue.value} />)}</SeoSection>
     <SeoSection title="文章 SEO 重複" description="僅檢查已發布文章；每篇文章應有不同的搜尋主題與摘要。" count={articleTitleDuplicates.length + articleDescriptionDuplicates.length}>{[...articleTitleDuplicates, ...articleDescriptionDuplicates].map((issue, index) => <IssueLink key={`${issue.item.id}-${index}`} href={`/admin/articles/${issue.item.id}/edit`} label={issue.item.title} reason={issue.reason} value={issue.value} />)}</SeoSection>
+    <SeoSection title="服務頁 SEO 問題" description="每個服務頁都應有獨立標題、描述與完整欄位。" count={serviceTitleDuplicates.length + serviceDescriptionDuplicates.length + incompleteServices.length}>{[...serviceTitleDuplicates, ...serviceDescriptionDuplicates, ...incompleteServices].map((issue, index) => <IssueLink key={`${issue.item.slug}-${index}`} href="/admin/content" label={issue.item.title} reason={issue.reason} value={issue.value} />)}</SeoSection>
     <SeoSection title="文章分類 SEO 問題" description="分類頁不得重複品牌名稱，也應避免彼此使用相同標題。" count={categoryBrandIssues.length + categoryTitleDuplicates.length + incompleteCategories.length}>{[...categoryBrandIssues, ...categoryTitleDuplicates, ...incompleteCategories].map((issue, index) => <IssueLink key={`${issue.item.id}-${index}`} href="/admin/settings#article-categories" label={issue.item.name} reason={issue.reason} value={issue.value} />)}</SeoSection>
     <SeoSection title="城市資料問題" description="檢查城市內容缺漏、標題重複及所屬專區已不存在的舊資料。" count={incompleteCities.length + cityTitleDuplicates.length + orphanCities.length}>{[...incompleteCities, ...cityTitleDuplicates].map((issue, index) => <IssueLink key={`${issue.item.id}-${index}`} href={`/admin/regions/${issue.item.region_id}/edit`} label={issue.item.name} reason={issue.reason} value={issue.value} />)}{orphanCities.map((issue) => <IssueLink key={issue.item.id} href="/admin/regions" label={issue.item.name} reason={issue.reason} value={`網址代稱：${issue.item.slug}`} />)}</SeoSection>
     <SeoSection title="SEO 欄位缺漏" description="已發布形象、文章與全站預設設定都應具有 SEO 標題及描述。" count={incompleteProfiles.length + incompleteArticles.length + defaultSeoIssues.length}>{incompleteProfiles.map((issue) => <IssueLink key={issue.item.id} href={`/admin/profiles/${issue.item.id}/edit`} label={issue.item.display_name} reason={issue.reason} />)}{incompleteArticles.map((issue) => <IssueLink key={issue.item.id} href={`/admin/articles/${issue.item.id}/edit`} label={issue.item.title} reason={issue.reason} />)}{defaultSeoIssues.map((reason) => <IssueLink key={reason} href="/admin/settings" label="全站預設 SEO" reason={reason} />)}</SeoSection>
