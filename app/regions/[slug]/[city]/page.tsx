@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     alternates: { canonical: `/regions/${slug}/${citySlug}` },
     openGraph: completeOpenGraph({
       url: `/regions/${slug}/${citySlug}`,
-      siteName: "範例品牌",
+      siteName: "寧兒外送茶",
       title: location.city.seo_title || `${location.city.name}成人形象介紹與預約諮詢`,
       description: location.city.seo_description || `${location.city.name}成人形象展示與合法預約諮詢。`,
       image: location.region.image,
@@ -154,3 +154,4 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
     </main>
   );
 }
+
