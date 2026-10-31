@@ -50,7 +50,7 @@ export default async function AdminSeoPage() {
   const regions = (regionRows ?? []) as Region[];
   const settings = (settingRows ?? []) as Setting[];
   const regionIds = new Set(regions.map((region) => region.id));
-  const brandName = String(settingObject(settings, "brand").name || "範例品牌");
+  const brandName = String(settingObject(settings, "brand").name || "寧兒外送茶");
   const defaultSeo = settingObject(settings, "seo");
   const servicesValue = settings.find((item) => item.key === "services")?.value;
   const services = (Array.isArray(servicesValue) ? servicesValue : []) as Service[];
@@ -118,3 +118,4 @@ export default async function AdminSeoPage() {
 
 function IssueLink({ href, label, reason, value }: { href: string; label: string; reason: string; value?: string }) { return <Link href={href}><span><strong>{label}</strong><small>{reason}{value ? ` · ${value}` : ""}</small></span><b>前往處理 →</b></Link>; }
 function SeoSection({ title, description, count, children }: { title: string; description: string; count: number; children: React.ReactNode }) { return <details className="seo-health-section" open={count > 0}><summary><span><strong>{title}</strong><small>{description}</small></span><i>{count}</i></summary><div className="seo-health-list">{count ? children : <p>目前沒有發現這類問題。</p>}</div></details>; }
+
