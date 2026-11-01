@@ -100,8 +100,12 @@ export default async function Home() {
       </nav>
 
       <section className="tw-discover section" aria-labelledby="tw-discover-title">
-        <div><p className="eyebrow">FIND YOUR DESTINATION</p><h2 id="tw-discover-title">從喜歡的城市開始</h2><p>依地區瀏覽公開形象，讓每次探索都更簡單。</p></div>
-        <div className="tw-destination-grid">{quickRegionSource.map(region => <article key={region.slug}><h3><Link className="tw-region-title" href={`/regions/${region.slug}/overview`}>{region.name}<span aria-hidden="true">↗</span></Link></h3><div>{region.cities.map(city => <Link key={city.slug} href={`/regions/${region.slug}/${city.slug}`}>{city.name}</Link>)}</div></article>)}</div>
+        <div><p className="eyebrow">FIND YOUR DESTINATION</p><h2 id="tw-discover-title">搜索想預約的城市</h2><p>依地區快速找到想瀏覽的城市與公開形象資訊。</p></div>
+        <div className="tw-destination-grid">{quickRegionSource.map((region, index) => <article data-region={region.slug} key={region.slug}>
+          <div className="tw-region-card-head"><span className="tw-region-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><span className="tw-region-count">{region.cities.length} 個城市</span></div>
+          <h3><Link className="tw-region-title" href={`/regions/${region.slug}/overview`}>{region.name}<span aria-hidden="true">↗</span></Link></h3>
+          <div className="tw-city-links">{region.cities.map(city => <Link key={city.slug} href={`/regions/${region.slug}/${city.slug}`}>{city.name}</Link>)}</div>
+        </article>)}</div>
       </section>
 
       <section className="intro section" id="about">
