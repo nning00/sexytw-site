@@ -106,8 +106,6 @@ export default async function Home() {
 
       <section className="intro section" id="about">
         <div className="intro-title">
-          <span className="section-index">01</span>
-          <p className="eyebrow">ABOUT THE EXPERIENCE</p>
           <h2>{settings.homepage.intro_title}</h2>
         </div>
         <div className="intro-copy">
@@ -119,7 +117,7 @@ export default async function Home() {
 
       <section className="gallery-section section" id="gallery">
         <div className="section-heading gallery-heading">
-          <div><span className="section-index">02</span><p className="eyebrow">VISUAL JOURNAL</p><h2>{settings.gallery.title}</h2></div>
+          <div><h2>{settings.gallery.title}</h2></div>
           <p>{settings.gallery.description}</p>
         </div>
         <div className="gallery-grid">
@@ -139,8 +137,6 @@ export default async function Home() {
 
       <section className="services section" id="services">
         <div className="section-heading">
-          <span className="section-index">03</span>
-          <p className="eyebrow">SERVICE GUIDE</p>
           <h2>{settings.homepage.services_title}</h2>
           <p>{settings.homepage.services_description}</p>
         </div>
@@ -169,7 +165,6 @@ export default async function Home() {
         </div>
         <div className="promise-overlay" aria-hidden="true" />
         <div className="promise-copy">
-          <p className="eyebrow">OUR PROMISE</p>
           <h2>{settings.homepage.promise_title}</h2>
           <ul>
             <li><span>01</span><div><strong>{settings.homepage.promise_one_title}</strong><p>{settings.homepage.promise_one_text}</p></div></li>
@@ -180,15 +175,13 @@ export default async function Home() {
       </section>
 
       <section className="home-articles section" id="articles">
-        <div className="section-heading centered"><span className="section-index">04</span><p className="eyebrow">READ & DISCOVER</p><h2>{settings.navigation.hot_articles}</h2><p>精選實用指南與最新內容，也可以依分類瀏覽完整文章。</p></div>
+        <div className="section-heading centered"><h2>{settings.navigation.hot_articles}</h2><p>精選實用指南與最新內容，也可以依分類瀏覽完整文章。</p></div>
         <ArticleCards articles={featuredArticles.length ? featuredArticles : publishedArticles.slice(0, 3)} />
         <div className="home-articles-action"><Link className="button secondary" href="/articles">瀏覽全部文章</Link></div>
       </section>
 
       <section className="faq section" id="faq">
         <div className="section-heading centered">
-          <span className="section-index">05</span>
-          <p className="eyebrow">QUESTIONS & ANSWERS</p>
           <h2>{settings.homepage.faq_title}</h2>
           <p>{settings.homepage.faq_description}</p>
         </div>
@@ -207,7 +200,6 @@ export default async function Home() {
       </section>
 
       <section className="contact section" id="contact">
-        <p className="eyebrow">READY WHEN YOU ARE</p>
         <h2>{settings.homepage.contact_title}</h2>
         <p>{settings.homepage.contact_text}</p>
         <a className="button primary" href={settings.brand.line_url} target="_blank" rel="noopener noreferrer">{content.labels.line_cta}</a>
@@ -216,3 +208,4 @@ export default async function Home() {
     </main>
   );
 }
+
