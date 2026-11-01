@@ -27,10 +27,22 @@ a,button,input,select,textarea{touch-action:manipulation}
 .home-page .quick-regions a:hover{background:#e8eef2;color:var(--ink)}
 .tw-discover{max-width:1288px;margin:auto;padding:80px 24px 64px;display:grid;grid-template-columns:1fr 2fr;gap:64px}
 .tw-discover h2{font-size:clamp(28px,3vw,40px);line-height:1.35;margin:16px 0}.tw-discover p{color:var(--muted);line-height:1.8}
-.tw-destination-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.tw-destination-grid article{border-top:2px solid #bca27d;padding:18px 0 8px}
-.tw-region-title{display:flex;justify-content:space-between;gap:12px;font-size:20px;font-weight:600;margin-bottom:14px;color:var(--ink)}
-.tw-destination-grid article>div{display:flex;gap:5px 12px;flex-wrap:wrap}.tw-destination-grid article>div a{padding:8px 0;color:#526176;min-height:40px}.tw-destination-grid a:hover{color:#765332;text-decoration:underline}
+.tw-destination-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.tw-destination-grid article{min-height:190px;padding:22px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:linear-gradient(145deg,#fff 0%,#f4f6f8 100%);box-shadow:0 14px 34px rgba(36,51,74,.07)}
+.tw-destination-grid article::after{content:"";width:116px;height:116px;position:absolute;right:-42px;bottom:-50px;border:1px solid rgba(54,87,120,.16);border-radius:50%;pointer-events:none}
+.tw-destination-grid article[data-region="central"]{background:linear-gradient(145deg,#fff 0%,#f5f1e8 100%)}
+.tw-destination-grid article[data-region="south"]{background:linear-gradient(145deg,#fff 0%,#f3eee7 100%)}
+.tw-destination-grid article[data-region="east-islands"]{background:linear-gradient(145deg,#fff 0%,#edf3f2 100%)}
+.tw-region-card-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.tw-region-number{display:grid;place-items:center;width:38px;height:38px;color:#fff;background:var(--teal-deep);border-radius:50%;font:700 11px/1 Arial,sans-serif;letter-spacing:.08em}
+.tw-region-count{color:var(--muted);font-size:12px;letter-spacing:.05em}
+.tw-destination-grid h3{margin:14px 0 12px}
+.tw-region-title{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink);font-size:22px;font-weight:600}
+.tw-region-title>span{display:grid;place-items:center;width:30px;height:30px;color:var(--teal);background:#fff;border:1px solid var(--line);border-radius:50%;font-size:14px;transition:transform .2s ease,background .2s ease}
+.tw-region-title:hover>span{color:#fff;background:var(--teal);transform:translate(2px,-2px)}
+.tw-city-links{display:flex;gap:7px;flex-wrap:wrap;position:relative;z-index:1}
+.tw-city-links a{min-height:36px;padding:8px 12px;display:inline-flex;align-items:center;color:#526176;background:rgba(255,255,255,.78);border:1px solid rgba(170,184,199,.7);border-radius:999px;font-size:13px}
+.tw-city-links a:hover{color:#fff;background:var(--teal);border-color:var(--teal);text-decoration:none}
 .home-page .intro{max-width:1288px;display:block;padding:60px 24px 80px;border-top:1px solid var(--line)}
 .intro-title::after{display:none}.home-page .intro-title{max-width:880px;margin:0 auto 28px;text-align:center}
 .home-page .intro h2{font-size:clamp(28px,3.2vw,46px);line-height:1.4;color:var(--ink)}
@@ -184,6 +196,9 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
 .profile-load-more{padding-top:22px}
 .city-seo{padding-top:42px;padding-bottom:42px;gap:5%}
 .detail-header{height:68px;padding-inline:var(--tw-page-gutter)}
+.detail-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.detail-back-link{color:var(--rose);font-size:13px;white-space:nowrap}
+.detail-line-cta{padding:10px 16px;font-size:12px;letter-spacing:.04em}
 .detail-hero{width:min(var(--tw-content-max),calc(100% - 2 * var(--tw-page-gutter)));min-height:0;margin:22px auto 0;overflow:hidden;border:1px solid var(--line);border-radius:8px}
 .detail-image{min-height:480px}
 .detail-copy{padding:44px}
@@ -267,6 +282,9 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
  .profile-info>span{font-size:12px;line-height:1.45}
  .city-seo{grid-template-columns:1fr;gap:18px;padding-block:28px}
  .detail-header{height:60px}
+ .detail-header-actions{margin-left:auto}
+ .detail-back-link{display:none}
+ .detail-line-cta{padding:9px 12px;font-size:11px}
  .detail-image{min-height:0;height:320px}
  .detail-related{padding:30px var(--tw-page-gutter)}
  .profile-detail-hero{padding:20px 10px 30px;gap:22px}
