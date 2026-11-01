@@ -127,7 +127,10 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
       <header className="detail-header">
         <MobileMenu />
         <Link className="brand" href="/"><BrandMark /><span>{settings.brand.name}</span></Link>
-        {/* Use a native navigation for this cross-page return control.  The\n            city page can contain a large hydrated profile grid, and forcing a\n            document navigation avoids a stalled client-router transition. */}\n        <a href={`/regions/${region.slug}/overview`}>返回{region.name}</a>
+        {/* Use a native navigation for this cross-page return control. The city
+            page can contain a large hydrated profile grid, and forcing a
+            document navigation avoids a stalled client-router transition. */}
+        <a href={`/regions/${region.slug}/overview`}>返回{region.name}</a>
       </header>
       <RegionNav />
 
@@ -154,4 +157,5 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
     </main>
   );
 }
+
 
