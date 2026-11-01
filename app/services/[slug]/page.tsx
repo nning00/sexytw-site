@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import MobileMenu from "@/components/MobileMenu";
 import RegionNav from "@/components/RegionNav";
+import DetailHeaderActions from "@/components/DetailHeaderActions";
 import { getContentSettings, getSiteSettings, serviceMediaUrl } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import JsonLd from "@/components/JsonLd";
@@ -95,7 +96,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
       <header className="detail-header">
         <MobileMenu />
         <Link className="brand" href="/"><BrandMark /><span>{settings.brand.name}</span></Link>
-        <Link href="/#services">所有服務</Link>
+        <DetailHeaderActions backHref="/#services" backLabel="所有服務" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
       <section className="detail-hero">
@@ -111,3 +112,4 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
     </main>
   );
 }
+
