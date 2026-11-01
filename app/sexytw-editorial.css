@@ -126,6 +126,7 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
  --tw-section-space:40px;
 }
 .section{padding:var(--tw-section-space) var(--tw-page-gutter)}
+.home-page .section{padding:var(--tw-section-space) var(--tw-page-gutter)}
 .section-heading{margin-bottom:24px}
 
 /* Home */
