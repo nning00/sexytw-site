@@ -7,6 +7,7 @@ import MobileMenu from "@/components/MobileMenu";
 import OptimizedMediaImage from "@/components/OptimizedMediaImage";
 import ProfileGallery from "@/components/ProfileGallery";
 import RegionNav from "@/components/RegionNav";
+import DetailHeaderActions from "@/components/DetailHeaderActions";
 import { profileExamples } from "@/data/profiles";
 import { getContentSettings, getPublishedProfile, getRelatedProfiles, getSiteSettings, mediaUrl, profileCardPath } from "@/lib/cms";
 import { parseProfileDetails, profileDetailKeys } from "@/lib/profile-details";
@@ -108,7 +109,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
       <header className="detail-header">
         <MobileMenu />
         <Link className="brand" href="/"><BrandMark /><span>{settings.brand.name}</span></Link>
-        <Link href="/#gallery">返回形象列表</Link>
+        <DetailHeaderActions backHref="/#gallery" backLabel="返回形象列表" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
       <section className="profile-detail-hero">
@@ -145,3 +146,4 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     </main>
   );
 }
+
