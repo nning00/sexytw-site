@@ -260,9 +260,11 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
  .region-rules ol{gap:10px}
  .region-rules li{padding:16px}
  .city-page .profile-section{padding-top:24px}
- .profile-grid{gap:12px}
- .profile-photo{height:330px}
- .profile-info{padding:17px 15px 19px}
+ .profile-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .profile-photo{height:auto;aspect-ratio:3/4}
+ .profile-info{padding:14px 12px 17px}
+ .profile-info h3{font-size:18px;line-height:1.35}
+ .profile-info>span{font-size:12px;line-height:1.45}
  .city-seo{grid-template-columns:1fr;gap:18px;padding-block:28px}
  .detail-header{height:60px}
  .detail-image{min-height:0;height:320px}
@@ -288,8 +290,6 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
 @media(max-width:520px){
  .tw-destination-grid{grid-template-columns:1fr}
  .home-page .hero-photo{height:300px}
- .profile-grid{grid-template-columns:1fr}
- .profile-photo{height:min(118vw,460px)}
  .region-rules ol{grid-template-columns:1fr}
 }
 
