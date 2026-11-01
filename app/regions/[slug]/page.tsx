@@ -8,6 +8,7 @@ import BrandMark from "@/components/BrandMark";
 import JsonLd from "@/components/JsonLd";
 import MobileMenu from "@/components/MobileMenu";
 import RegionNav from "@/components/RegionNav";
+import DetailHeaderActions from "@/components/DetailHeaderActions";
 import { getSiteSettings, mediaUrl } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -91,7 +92,7 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
     <header className="detail-header">
       <MobileMenu />
       <Link className="brand" href="/"><BrandMark /><span>{settings.brand.name}</span></Link>
-      <Link href="/">返回首頁</Link>
+      <DetailHeaderActions backHref="/" backLabel="返回首頁" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
     </header>
     <RegionNav />
     <section className="region-hero">
@@ -120,3 +121,4 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
     </section>
   </main>;
 }
+
