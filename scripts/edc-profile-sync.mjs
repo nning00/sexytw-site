@@ -27,18 +27,33 @@ function argValue(name) {
 }
 
 function decodeHtml(value = "") {
-  return value
+  let decoded = String(value)
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;|&#34;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<[^>]+>/g, " ");
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = decoded
+      .replace(/&#(\d+);?/g, (_, code) => String.fromCodePoint(Number(code)))
+      .replace(/&#x([0-9a-f]+);?/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;|&#39;/gi, "'")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">");
+    if (next === decoded) break;
+    decoded = next;
+  }
+  return decoded.replace(/\s+/g, " ").trim();
+}
+
+function cleanSourceFact(value, min, max) {
+  const decoded = decodeHtml(value);
+  if (!decoded || /^(?:[?？\-–—－]|不詳|未知|未公開|無資料|null|undefined)$/i.test(decoded)) return "";
+  if (min === undefined || max === undefined) return decoded;
+  const match = decoded.match(/\d{2,3}/);
+  const number = match ? Number(match[0]) : 0;
+  return number >= min && number <= max ? String(number) : "";
 }
 
 function field(text, label, nextLabels) {
@@ -73,7 +88,7 @@ function priceText(prices) {
 function normalizeProduct(product) {
   const city = cityName(product);
   const text = decodeHtml(product.description || "");
-  const age = field(text, "年齡", ["身高", "體重", "罩杯", "類型"]);
+  const age = cleanSourceFact(field(text, "年齡", ["身高", "體重", "罩杯", "類型"]), 18, 99);
   const serviceMethod = attribute(product, "服務方式") || field(text, "類型", ["地區", "模式", "可配合"]);
   const displayName = decodeHtml(product.name || "").replace(/^.*?[-–—]\s*/, "").trim();
   if (!product.id || !product.permalink || !displayName || !city) return null;
@@ -84,9 +99,9 @@ function normalizeProduct(product) {
     cityName: city,
     nationality: attribute(product, "國籍") || field(text, "國家", ["年齡"]),
     age,
-    height: attribute(product, "身高") || field(text, "身高", ["體重", "罩杯"]),
-    weight: field(text, "體重", ["罩杯", "類型"]),
-    cup: attribute(product, "罩杯") || field(text, "罩杯", ["類型", "地區"]),
+    height: cleanSourceFact(attribute(product, "身高") || field(text, "身高", ["體重", "罩杯"]), 120, 220),
+    weight: cleanSourceFact(field(text, "體重", ["罩杯", "類型"]), 30, 200),
+    cup: cleanSourceFact(attribute(product, "罩杯") || field(text, "罩杯", ["類型", "地區"])).replace(/罩杯/gi, "").trim(),
     environment: field(text, "模式", ["可配合", "不接受"]),
     serviceMethod,
     price: priceText(product.prices),

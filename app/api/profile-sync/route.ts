@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { serializeProfileDetails, type ProfileDetails } from "@/lib/profile-details";
+import { buildProfileSeoDescription, normalizeProfileDetails, serializeProfileDetails, type ProfileDetails } from "@/lib/profile-details";
 import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +107,7 @@ function normalizeProfile(input: SourceProfile) {
   const cityName = clean(input.cityName, 30);
   if (!sourceKey || !displayName || !cityName || !validSourceUrl(sourceUrl)) return null;
 
-  const details: ProfileDetails = {
+  const details: ProfileDetails = normalizeProfileDetails({
     nationality: clean(input.nationality, 80),
     age: clean(input.age, 30),
     height: clean(input.height, 30),
@@ -121,7 +121,7 @@ function normalizeProfile(input: SourceProfile) {
     notAccepted: clean(input.notAccepted),
     surcharge: clean(input.surcharge),
     promotion: clean(input.promotion),
-  };
+  });
   const images = (Array.isArray(input.images) ? input.images : [])
     .map(normalizedImage)
     .filter((image): image is SourceImage => Boolean(image))
@@ -306,23 +306,21 @@ export async function POST(request: Request) {
           ? current.adult_review_status
           : "pending";
       const targetStatus = reviewStatus === "verified" ? "published" : reviewStatus === "rejected" ? "archived" : "draft";
+      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
+      const seoDescription = buildProfileSeoDescription(profile.cityName, profile.displayName, profile.details);
       if (current?.source_content_hash === profile.contentHash) {
         await supabase.from("profiles").update({
           source_last_seen_at: capturedAt,
           status: targetStatus,
           adult_review_status: reviewStatus,
           adult_verified_at: reviewStatus === "verified" ? current.adult_verified_at || capturedAt : null,
+          introduction: serializeProfileDetails(profile.details),
+          seo_title: seoTitle,
+          seo_description: seoDescription,
         }).eq("id", current.id);
         result.unchanged += 1;
         continue;
       }
-      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
-      const profileFacts = [
-        profile.details.age ? `${profile.details.age}歲` : "",
-        profile.details.height ? `${profile.details.height}cm` : "",
-        profile.details.cup ? `${profile.details.cup}罩杯` : "",
-      ].filter(Boolean).join("、");
-      const seoDescription = `${profile.cityName}${profile.details.serviceMethod || "成人形象"}資訊｜${profile.displayName}${profileFacts ? `，${profileFacts}` : ""}。查看公開照片、基本資料、服務地區與聯絡前注意事項；實際安排請以正式聯絡及安全確認為準。`;
       const payload = {
         slug: current?.slug || `source-${profile.sourceKey}`,
         display_name: profile.displayName,
