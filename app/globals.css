@@ -945,7 +945,9 @@ h2 { margin: 0; font-size: clamp(36px, 4vw, 58px); line-height: 1.4; letter-spac
   .mobile-drawer { width: min(76vw, 390px); height: 100%; padding-bottom: env(safe-area-inset-bottom, 0); position: relative; z-index: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: white; box-shadow: 20px 0 55px rgba(0,0,0,.2); }
   .drawer-search { height: 84px; padding: 0 22px; display: flex; align-items: center; border-bottom: 1px solid #e8e2e3; }
   .drawer-search input { min-width: 0; flex: 1; color: var(--ink); background: transparent; border: 0; outline: 0; font-size: 15px; font-weight: 600; }
-  .drawer-search span { color: #777; font-size: 31px; }
+  .drawer-search > span { color: #777; font-size: 31px; }
+  .drawer-close { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; color: var(--ink); background: #f8f5f5; border: 1px solid #e3dadd; border-radius: 50%; cursor: pointer; font-size: 27px; line-height: 1; }
+  .drawer-close:hover, .drawer-close:focus-visible { color: var(--deep-rose); background: white; border-color: var(--rose); }
   .drawer-tabs { display: grid; grid-template-columns: 1fr 1fr; background: #f5f3f3; }
   .drawer-tabs button { padding: 20px 8px; color: #858084; background: transparent; border: 0; border-bottom: 3px solid transparent; font-weight: 600; }
   .drawer-tabs button.active { color: var(--ink); background: white; border-bottom-color: var(--rose); }
