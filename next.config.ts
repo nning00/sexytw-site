@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep metadata in <head> for every crawler and audit tool. The site-wide
-  // settings query is cached, so this avoids crawler-specific differences.
-  htmlLimitedBots: /.*/,
   experimental: { cpus: 1 },
   images: {
     remotePatterns: [

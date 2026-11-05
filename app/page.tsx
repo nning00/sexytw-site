@@ -11,6 +11,8 @@ import { regions as fallbackRegions } from "@/data/regions";
 import { optimizedMediaSrcSet, optimizedMediaUrl } from "@/lib/media-image";
 import type { CSSProperties } from "react";
 
+export const revalidate = 300;
+
 const fallbackFaqs = [
   { question: "如何進行預約諮詢？", answer: "請點選網站上的 LINE 按鈕，簡單說明希望了解的內容、日期與方便聯絡的時間。我們會透過 LINE 回覆並確認後續流程。" },
   { question: "網站提供哪些服務？", answer: "本站提供成人形象展示、合法的外出陪伴、定點會面與預約諮詢，不提供或安排任何違法服務。實際內容與界線皆須在預約前清楚確認。" },
@@ -96,15 +98,15 @@ export default async function Home() {
 
       <nav className="quick-regions" aria-label="熱門地區快速入口">
         <strong><span>EXPLORE</span> 熱門地區</strong>
-        {quickRegions.map((region) => <Link href={region.href} key={region.href}>{region.name}</Link>)}
+        {quickRegions.map((region) => <Link href={region.href} prefetch={false} key={region.href}>{region.name}</Link>)}
       </nav>
 
       <section className="tw-discover section" aria-labelledby="tw-discover-title">
         <div><p className="eyebrow">FIND YOUR DESTINATION</p><h2 id="tw-discover-title">搜索想預約的城市</h2><p>依地區快速找到想瀏覽的城市與公開形象資訊。</p></div>
         <div className="tw-destination-grid">{quickRegionSource.map((region, index) => <article data-region={region.slug} key={region.slug}>
           <div className="tw-region-card-head"><span className="tw-region-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><span className="tw-region-count">{region.cities.length} 個城市</span></div>
-          <h3><Link className="tw-region-title" href={`/regions/${region.slug}/overview`}>{region.name}<span aria-hidden="true">↗</span></Link></h3>
-          <div className="tw-city-links">{region.cities.map(city => <Link key={city.slug} href={`/regions/${region.slug}/${city.slug}`}>{city.name}</Link>)}</div>
+          <h3><Link className="tw-region-title" href={`/regions/${region.slug}/overview`} prefetch={false}>{region.name}<span aria-hidden="true">↗</span></Link></h3>
+          <div className="tw-city-links">{region.cities.map(city => <Link key={city.slug} href={`/regions/${region.slug}/${city.slug}`} prefetch={false}>{city.name}</Link>)}</div>
         </article>)}</div>
       </section>
 

@@ -2,8 +2,8 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = ''
 as $$
   select exists(select 1 from public.admin_users where user_id = (select auth.uid()));
 $$;
@@ -27,11 +27,31 @@ create policy admin_self_read on public.admin_users for select to authenticated 
 create policy public_read_regions on public.regions for select to anon, authenticated using (published or public.is_admin());
 create policy public_read_cities on public.cities for select to anon, authenticated using (published or public.is_admin());
 create policy public_read_profiles on public.profiles for select to anon, authenticated using ((status = 'published' and adult_review_status = 'verified') or public.is_admin());
-create policy public_read_profile_images on public.profile_images for select to anon, authenticated using (true);
-create policy public_read_profile_cities on public.profile_cities for select to anon, authenticated using (true);
+create policy public_read_profile_images on public.profile_images for select to anon, authenticated using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = profile_images.profile_id
+      and p.status = 'published'
+      and p.adult_review_status = 'verified'
+  )
+);
+create policy public_read_profile_cities on public.profile_cities for select to anon, authenticated using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = profile_cities.profile_id
+      and p.status = 'published'
+      and p.adult_review_status = 'verified'
+  )
+);
 create policy public_read_categories on public.article_categories for select to anon, authenticated using (published or public.is_admin());
 create policy public_read_articles on public.articles for select to anon, authenticated using (status = 'published' or public.is_admin());
-create policy public_read_article_images on public.article_images for select to anon, authenticated using (true);
+create policy public_read_article_images on public.article_images for select to anon, authenticated using (
+  exists (
+    select 1 from public.articles a
+    where a.id = article_images.article_id
+      and a.status = 'published'
+  )
+);
 create policy public_read_settings on public.site_settings for select to anon, authenticated using (true);
 
 create policy admin_all_regions on public.regions for all to authenticated using (public.is_admin()) with check (public.is_admin());

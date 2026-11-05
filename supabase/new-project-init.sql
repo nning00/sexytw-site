@@ -1,7 +1,11 @@
 create extension if not exists pgcrypto;
 
 create or replace function public.set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
@@ -170,19 +174,23 @@ values ('site-media', 'site-media', true, 52428800, array['image/jpeg','image/pn
 on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
 grant usage on schema public to anon, authenticated;
-grant all on all tables in schema public to anon, authenticated;
-grant all on all sequences in schema public to anon, authenticated;
+grant select on all tables in schema public to anon, authenticated;
+grant insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
 
-alter table public.regions disable row level security;
-alter table public.cities disable row level security;
-alter table public.profiles disable row level security;
-alter table public.profile_images disable row level security;
-alter table public.profile_cities disable row level security;
-alter table public.profile_source_images disable row level security;
-alter table public.profile_sync_runs disable row level security;
-alter table public.article_categories disable row level security;
-alter table public.articles disable row level security;
-alter table public.article_images disable row level security;
-alter table public.site_settings disable row level security;
+-- Keep RLS enabled throughout initialization. Until the finalize script creates
+-- policies, the new tables remain closed to browser clients by default.
+alter table public.admin_users enable row level security;
+alter table public.regions enable row level security;
+alter table public.cities enable row level security;
+alter table public.profiles enable row level security;
+alter table public.profile_images enable row level security;
+alter table public.profile_cities enable row level security;
+alter table public.profile_source_images enable row level security;
+alter table public.profile_sync_runs enable row level security;
+alter table public.article_categories enable row level security;
+alter table public.articles enable row level security;
+alter table public.article_images enable row level security;
+alter table public.site_settings enable row level security;
 
 select 'schema-ready' as result;
