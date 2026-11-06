@@ -44,7 +44,7 @@ test("dispatch is fixed to sexytw main only, bearer stays at GitHub and redirect
   const result = await dispatchProfileSync(environment, time, async (url, options) => {
     calls.push({ url, options });
     assert.equal(new URL(url).origin, "https://api.github.com");
-    assert.equal(options.redirect, "error");
+    assert.equal(options.redirect, "manual");
     assert.equal(options.cache, "no-store");
     assert.equal(options.headers.Authorization, `Bearer ${environment.GITHUB_ACTIONS_DISPATCH_TOKEN}`);
     return options.method === "POST" ? new Response(null, { status: 204 }) : Response.json({ workflow_runs: [run()] });
@@ -108,4 +108,25 @@ test("progress diagnostics identify the failed stage without request payloads", 
   const stages = [];
   await assert.rejects(dispatchProfileSync(environment, time, async () => { throw new Error("private-test-value"); }, s => stages.push(s)));
   assert.deepEqual(stages, ["environment-check", "secret-check", "schedule-check", "history-request"]);
+});
+
+test("Workers-compatible manual redirects never send the token to a redirect destination", async () => {
+  for (const status of [301, 302, 303, 307, 308]) {
+    let calls = 0;
+    await assert.rejects(dispatchProfileSync(environment, time, async (url, options) => {
+      calls++;
+      assert.equal(options.redirect, "manual");
+      assert.equal(new URL(url).origin, "https://api.github.com");
+      return new Response(null, {status, headers:{Location:"https://other.invalid/collect"}});
+    }), {message:`GitHub sync history check failed (HTTP ${status}).`});
+    assert.equal(calls, 1);
+  }
+  let calls = 0;
+  await assert.rejects(dispatchProfileSync(environment, time, async (url, options) => {
+    calls++;
+    assert.equal(options.redirect, "manual");
+    assert.equal(new URL(url).origin, "https://api.github.com");
+    return calls === 1 ? Response.json({workflow_runs:[]}) : new Response(null,{status:307,headers:{Location:"https://other.invalid/collect"}});
+  }), {message:"GitHub sync dispatch failed (HTTP 307)."});
+  assert.equal(calls, 2);
 });
