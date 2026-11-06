@@ -1,6 +1,17 @@
 import handler from "vinext/server/fetch-handler";
+import { dispatchProfileSync } from "../lib/profile-sync-dispatch.mjs";
 
 const worker = {
+  async scheduled(controller: ScheduledController, env: Cloudflare.Env) {
+    try {
+      const result = await dispatchProfileSync(env, controller.scheduledTime);
+      console.log(JSON.stringify({ event: "sexytw-sync-scheduler", scheduledAt: new Date(controller.scheduledTime).toISOString(), ...result }));
+    } catch {
+      // Do not log credentials, request headers or raw upstream exceptions.
+      console.error("sexytw-sync-scheduler failed; check GitHub Actions access and token expiration.");
+      throw new Error("sexytw-sync-scheduler failed");
+    }
+  },
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
     const requestUrl = new URL(request.url);
     let redirect = false;

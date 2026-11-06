@@ -10,5 +10,6 @@ declare namespace Cloudflare {
     SUPABASE_SERVICE_ROLE_KEY?: string;
     PROFILE_SYNC_SECRET?: string;
     INDEXNOW_KEY?: string;
+    GITHUB_ACTIONS_DISPATCH_TOKEN?: string;
   }
 }
