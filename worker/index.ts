@@ -1,14 +1,18 @@
 import handler from "vinext/server/fetch-handler";
+import { getOriginalFetch } from "vinext/shims/fetch-cache";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
 
 const worker = {
   async scheduled(controller: ScheduledController, env: Cloudflare.Env) {
+    let stage = "initialize";
     try {
-      const result = await dispatchProfileSync(env, controller.scheduledTime);
+      // Scheduled events are not page renders: bypass the framework's
+      // request-scoped fetch wrapper for these privileged infrastructure calls.
+      const result = await dispatchProfileSync(env, controller.scheduledTime, getOriginalFetch(), (value) => { stage = value; });
       console.log(JSON.stringify({ event: "sexytw-sync-scheduler", scheduledAt: new Date(controller.scheduledTime).toISOString(), ...result }));
     } catch (error) {
       // Do not log credentials, request headers or raw upstream exceptions.
-      console.error(JSON.stringify({ event: "sexytw-sync-scheduler", status: "failed", reason: safeDispatchFailure(error) }));
+      console.error(JSON.stringify({ event: "sexytw-sync-scheduler", status: "failed", stage, reason: safeDispatchFailure(error) }));
       throw new Error("sexytw-sync-scheduler failed");
     }
   },

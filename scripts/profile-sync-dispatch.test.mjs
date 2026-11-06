@@ -101,4 +101,11 @@ test("diagnostic output includes fixed reasons only, never raw error details", (
   }
   assert.equal(safeDispatchFailure(new Error("Illegal invocation with private-test-value")), "Invalid fetch receiver.");
   assert.equal(safeDispatchFailure(new Error("request context private-test-value")), "Fetch request-context failure.");
+  assert.equal(safeDispatchFailure({message:"GitHub sync history check failed (HTTP 403)."}), "GitHub sync history check failed (HTTP 403).");
+});
+
+test("progress diagnostics identify the failed stage without request payloads", async () => {
+  const stages = [];
+  await assert.rejects(dispatchProfileSync(environment, time, async () => { throw new Error("private-test-value"); }, s => stages.push(s)));
+  assert.deepEqual(stages, ["environment-check", "secret-check", "schedule-check", "history-request"]);
 });
