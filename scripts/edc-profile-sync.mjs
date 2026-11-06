@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const localEnvPaths = [join(projectRoot, ".env.sync.local"), join(projectRoot, ".env.local")];
@@ -162,8 +163,10 @@ async function postPayload(payload) {
   const endpoint = process.env.PROFILE_SYNC_ENDPOINT;
   const secret = process.env.PROFILE_SYNC_SECRET;
   if (!endpoint || !secret) return null;
+  assertSyncEndpoint(endpoint);
   const response = await fetch(endpoint, {
     method: "POST",
+    redirect: "error",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
     body: JSON.stringify(payload),
   });
@@ -182,6 +185,15 @@ function errorMessage(error) {
 
 loadLocalEnv();
 const commit = process.argv.includes("--commit");
+const verifyOnly = process.argv.includes("--verify-only");
+if (commit || verifyOnly || process.env.PROFILE_SYNC_ENDPOINT || process.env.PROFILE_SYNC_SECRET) {
+  await verifySyncTarget(process.env.PROFILE_SYNC_ENDPOINT, process.env.PROFILE_SYNC_SECRET);
+  console.log("Sync target verified: sexytw.cc / lsxrpubpbnshlqnnddgu / public / sexytw (read-only preflight).");
+}
+if (verifyOnly) {
+  console.log("Verification completed; no source crawl, profile write or snapshot cleanup was performed.");
+  process.exit(0);
+}
 const selectedCity = argValue("--city") || "";
 const limit = Math.max(Number(argValue("--limit") || "0"), 0);
 if (selectedCity && !knownCities.has(selectedCity)) throw new Error(`不支援的城市：${selectedCity}`);
@@ -257,7 +269,10 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
   if (commit && !selectedCity && limit === 0 && totals.errors === 0) {
-    await postPayload({ mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: profiles.map((profile) => profile.sourceKey) });
+    const finalResult = await postPayload({ mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: profiles.map((profile) => profile.sourceKey) });
+    if (finalResult?.ok !== true || finalResult?.result?.errors?.length) {
+      throw new Error("Final snapshot cleanup failed; check the sync API before trusting this run.");
+    }
   }
   console.log(JSON.stringify(totals, null, 2));
   if (totals.errors) throw new Error(`同步完成但有 ${totals.errors} 筆錯誤；已保留既有資料並略過封存，下次排程會重試。`);

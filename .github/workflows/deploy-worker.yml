@@ -19,6 +19,7 @@ jobs:
           node-version: "22"
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/profile-sync-target.test.mjs
       - run: pnpm build
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
@@ -26,3 +27,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config wrangler.jsonc
+      - name: Verify dedicated sync target without writing profiles
+        env:
+          PROFILE_SYNC_ENDPOINT: https://sexytw.cc/api/profile-sync
+          PROFILE_SYNC_SECRET: ${{ secrets.PROFILE_SYNC_SECRET }}
+        run: node scripts/edc-profile-sync.mjs --verify-only

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildProfileSeoDescription, normalizeProfileDetails, serializeProfileDetails, type ProfileDetails } from "@/lib/profile-details";
 import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
+import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -226,8 +227,26 @@ async function syncImages(profileId: string, displayName: string, images: Source
   return ordered[0]?.storage_path ?? null;
 }
 
+export async function GET(request: Request) {
+  const headers = { "Cache-Control": "private, no-store" };
+  if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+  try {
+    assertSyncEnvironment(process.env);
+    const client = createAdminClient();
+    if (!client) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
+    const { error } = await client.from("profiles").select("id").limit(1);
+    if (error) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
+    return NextResponse.json({ ok: true, databaseReachable: true, target: syncTarget }, { headers });
+  } catch {
+    return NextResponse.json({ error: "Sync target verification failed" }, { status: 503, headers });
+  }
+}
+
 export async function POST(request: Request) {
   if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try { assertSyncEnvironment(process.env); } catch {
+    return NextResponse.json({ error: "Sync target configuration mismatch" }, { status: 503 });
+  }
   const body = await request.json().catch(() => null) as SyncBody | null;
   const snapshotSourceKeys = Array.isArray(body?.snapshotSourceKeys)
     ? body.snapshotSourceKeys.map((value) => clean(value, 80).toLowerCase().replace(/[^a-z0-9_-]/g, "")).filter(Boolean)
@@ -309,7 +328,7 @@ export async function POST(request: Request) {
       const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
       const seoDescription = buildProfileSeoDescription(profile.cityName, profile.displayName, profile.details);
       if (current?.source_content_hash === profile.contentHash) {
-        await supabase.from("profiles").update({
+        const { error: unchangedUpdateError } = await supabase.from("profiles").update({
           source_last_seen_at: capturedAt,
           status: targetStatus,
           adult_review_status: reviewStatus,
@@ -318,6 +337,7 @@ export async function POST(request: Request) {
           seo_title: seoTitle,
           seo_description: seoDescription,
         }).eq("id", current.id);
+        if (unchangedUpdateError) throw unchangedUpdateError;
         result.unchanged += 1;
         continue;
       }
@@ -364,7 +384,8 @@ export async function POST(request: Request) {
     const missing = (existing ?? []).filter((profile) => !seen.has(profile.source_key));
     if (missing.length) {
       const { error } = await supabase.from("profiles").update({ status: "archived" }).in("id", missing.map((profile) => profile.id));
-      if (!error) result.archived = missing.length;
+      if (error) result.errors.push({ sourceKey: "snapshot", message: syncErrorMessage(error) });
+      else result.archived = missing.length;
     }
   }
 
