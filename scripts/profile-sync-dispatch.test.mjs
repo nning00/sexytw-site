@@ -45,6 +45,7 @@ test("dispatch is fixed to sexytw main only, bearer stays at GitHub and redirect
     calls.push({ url, options });
     assert.equal(new URL(url).origin, "https://api.github.com");
     assert.equal(options.redirect, "error");
+    assert.equal(options.cache, "no-store");
     assert.equal(options.headers.Authorization, `Bearer ${environment.GITHUB_ACTIONS_DISPATCH_TOKEN}`);
     return options.method === "POST" ? new Response(null, { status: 204 }) : Response.json({ workflow_runs: [run()] });
   });
@@ -98,4 +99,6 @@ test("diagnostic output includes fixed reasons only, never raw error details", (
   for (const value of [new Error("Authorization: Bearer private-test-value"), new Error("GitHub sync dispatch failed (HTTP 403). private-test-value"), { message: "private-test-value" }, null]) {
     assert.equal(safeDispatchFailure(value), "Unexpected upstream/network failure.");
   }
+  assert.equal(safeDispatchFailure(new Error("Illegal invocation with private-test-value")), "Invalid fetch receiver.");
+  assert.equal(safeDispatchFailure(new Error("request context private-test-value")), "Fetch request-context failure.");
 });
