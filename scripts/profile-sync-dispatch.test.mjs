@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dispatchProfileSync, dispatchTarget, syncSlotStart } from "../lib/profile-sync-dispatch.mjs";
+import { dispatchProfileSync, dispatchTarget, syncSlotStart, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
 import { syncTarget } from "../lib/profile-sync-target.mjs";
 
 const environment = {
@@ -89,4 +89,13 @@ test("failed dispatch is surfaced without a blind POST retry or response body le
     return count === 1 ? Response.json({ workflow_runs: [] }) : new Response("private upstream body", { status: 403 });
   }), { message: "GitHub sync dispatch failed (HTTP 403)." });
   assert.equal(count, 2);
+});
+
+test("diagnostic output includes fixed reasons only, never raw error details", () => {
+  for (const message of ["GitHub sync history check failed (HTTP 403).", "GITHUB_ACTIONS_DISPATCH_TOKEN is missing.", "Sync target configuration mismatch."]) {
+    assert.equal(safeDispatchFailure(new Error(message)), message);
+  }
+  for (const value of [new Error("Authorization: Bearer private-test-value"), new Error("GitHub sync dispatch failed (HTTP 403). private-test-value"), { message: "private-test-value" }, null]) {
+    assert.equal(safeDispatchFailure(value), "Unexpected upstream/network failure.");
+  }
 });
