@@ -1,10 +1,9 @@
 name: Sync public profiles to sexytw.cc
 
 on:
-  schedule:
-    # Every six hours: 00:17, 06:17, 12:17 and 18:17 in Taiwan.
-    # Offset from the other sites; GitHub schedules remain best-effort.
-    - cron: "17 4,10,16,22 * * *"
+  # Cloudflare sexytw-site now dispatches main every six hours (Taiwan
+  # 00:17 / 06:17 / 12:17 / 18:17). Keep the manual Run workflow control.
+  # Do not restore a second GitHub schedule: it could duplicate the CF trigger.
   workflow_dispatch:
 
 permissions:
@@ -16,6 +15,7 @@ concurrency:
 
 jobs:
   sync:
+    if: github.repository == 'nning00/sexytw-site'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
