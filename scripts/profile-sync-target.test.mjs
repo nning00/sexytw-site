@@ -39,7 +39,7 @@ test("preflight is authenticated, read-only, noncached and refuses redirects", a
     assert.equal(options.cache, "no-store");
     assert.equal(options.headers.Authorization, "Bearer test-only");
     assert.equal(options.body, undefined);
-    return Response.json({ ok: true, databaseReachable: true, target: syncTarget });
+    return Response.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, target: syncTarget });
   });
 });
 
@@ -48,6 +48,7 @@ test("rejects authentication failures, incomplete identity and wrong database", 
   for (const response of [
     new Response("Unauthorized", { status: 401 }),
     Response.json({ ok: true }),
+    Response.json({ ok: true, databaseReachable: true, target: syncTarget }),
     Response.json({ ok: true, databaseReachable: false, target: syncTarget }),
     Response.json({ ok: true, databaseReachable: true, target: { ...syncTarget, supabaseUrl: "https://other.supabase.co" } }),
   ]) {

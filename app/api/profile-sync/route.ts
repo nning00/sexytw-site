@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildProfileSeoDescription, normalizeProfileDetails, serializeProfileDetails, type ProfileDetails } from "@/lib/profile-details";
 import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs";
+import { changedFields, finalizeSnapshot } from "@/lib/profile-sync-snapshot.mjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,6 +46,8 @@ type SyncBody = {
   deferRevalidation?: boolean;
   finalizeSnapshot?: boolean;
   snapshotSourceKeys?: string[];
+  snapshotProof?: { complete: boolean; sourceTotal: number; sourcePages: number; pagesFetched: number; rawCount: number };
+  cleanupCursor?: string | null;
   profiles?: SourceProfile[];
 };
 
@@ -173,7 +176,11 @@ async function syncImages(profileId: string, displayName: string, images: Source
   const removed = (trackedRows ?? []).filter((row) => !desired.has(row.source_url));
   if (removed.length) {
     const ownedPaths = removed.map((row) => row.storage_path).filter(isOwnedMediaPath);
-    if (ownedPaths.length) await supabase.storage.from("site-media").remove(ownedPaths);
+    if (ownedPaths.length) {
+      const { error: queueError } = await supabase.from("sexytw_media_cleanup_queue")
+        .upsert(ownedPaths.map((storage_path) => ({ storage_path })), { onConflict: "storage_path", ignoreDuplicates: true });
+      if (queueError) throw queueError;
+    }
     const { error } = await supabase.from("profile_source_images").delete().eq("profile_id", profileId).in("source_url", removed.map((row) => row.source_url));
     if (error) throw error;
   }
@@ -236,7 +243,9 @@ export async function GET(request: Request) {
     if (!client) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
     const { error } = await client.from("profiles").select("id").limit(1);
     if (error) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
-    return NextResponse.json({ ok: true, databaseReachable: true, target: syncTarget }, { headers });
+    const { error: cleanupError } = await client.rpc("sexytw_media_cleanup_batch");
+    if (cleanupError) return NextResponse.json({ error: "Sync maintenance database setup incomplete" }, { status: 503, headers });
+    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, target: syncTarget }, { headers });
   } catch {
     return NextResponse.json({ error: "Sync target verification failed" }, { status: 503, headers });
   }
@@ -264,19 +273,35 @@ export async function POST(request: Request) {
   if (duplicateSourceKeys.length) return NextResponse.json({ error: "Duplicate source keys", duplicateSourceKeys }, { status: 400 });
 
   const supabase = createAdminClient();
+  if (body.finalizeSnapshot) {
+    if (mode !== "commit" || body.profiles.length) return NextResponse.json({ error: "Invalid snapshot cleanup mode" }, { status: 400 });
+    try {
+      // SQL keyset batches avoid the REST API's 1,000-row response ceiling.
+      // A missing/incomplete proof is rejected before any write or deletion.
+      const cleanup = await finalizeSnapshot(supabase, body);
+      // Invalidate after EVERY cleanup page so a later storage failure cannot
+      // leave successfully removed rows represented by cached public content.
+      revalidateTag("profiles", { expire: 0 });
+      revalidateTag("regions", { expire: 0 });
+      revalidatePath("/", "layout");
+      revalidatePath("/sitemap.xml");
+      return NextResponse.json({ ok: true, mode, cleanup }, { headers: { "Cache-Control": "private, no-store" } });
+    } catch (error) {
+      revalidateTag("profiles", { expire: 0 });
+      revalidatePath("/", "layout");
+      return NextResponse.json({ ok: false, error: syncErrorMessage(error) }, { status: 409, headers: { "Cache-Control": "private, no-store" } });
+    }
+  }
   let existingQuery = supabase
     .from("profiles")
-    .select("id,source_key,source_content_hash,status,slug,adult_review_status,adult_verified_at,adult_verified_by")
+    .select("id,source_key,source_content_hash,status,slug,adult_review_status,adult_verified_at,adult_verified_by,introduction,seo_title,seo_description")
     .eq("source_provider", PROVIDER);
   // Normal sync requests contain only a few records. Querying every imported
-  // profile for every batch was the main source of Worker CPU and database
-  // load. The complete catalogue is only required for final snapshot cleanup.
-  if (!body.finalizeSnapshot) {
-    const sourceKeys = normalizedProfiles.map((profile) => profile.sourceKey);
-    existingQuery = sourceKeys.length
-      ? existingQuery.in("source_key", sourceKeys)
-      : existingQuery.eq("source_key", "__no_matching_source__");
-  }
+  // profile for every batch wastes Worker CPU and database bandwidth.
+  const sourceKeys = normalizedProfiles.map((profile) => profile.sourceKey);
+  existingQuery = sourceKeys.length
+    ? existingQuery.in("source_key", sourceKeys)
+    : existingQuery.eq("source_key", "__no_matching_source__");
   const [{ data: cities, error: cityError }, { data: existing, error: existingError }] = await Promise.all([
     supabase.from("cities").select("id,name,published"),
     existingQuery,
@@ -328,16 +353,21 @@ export async function POST(request: Request) {
       const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
       const seoDescription = buildProfileSeoDescription(profile.cityName, profile.displayName, profile.details);
       if (current?.source_content_hash === profile.contentHash) {
-        const { error: unchangedUpdateError } = await supabase.from("profiles").update({
-          source_last_seen_at: capturedAt,
+        const patch = changedFields(current, {
           status: targetStatus,
           adult_review_status: reviewStatus,
           adult_verified_at: reviewStatus === "verified" ? current.adult_verified_at || capturedAt : null,
           introduction: serializeProfileDetails(profile.details),
           seo_title: seoTitle,
           seo_description: seoDescription,
-        }).eq("id", current.id);
-        if (unchangedUpdateError) throw unchangedUpdateError;
+        });
+        // Full imports record all presence timestamps in one set-based call.
+        // Ordinary single-city/manual imports retain their last-seen behavior.
+        if (!body.deferRevalidation) patch.source_last_seen_at = capturedAt;
+        if (Object.keys(patch).length) {
+          const { error: unchangedUpdateError } = await supabase.from("profiles").update(patch).eq("id", current.id);
+          if (unchangedUpdateError) throw unchangedUpdateError;
+        }
         result.unchanged += 1;
         continue;
       }
@@ -376,16 +406,6 @@ export async function POST(request: Request) {
       else result.created += 1;
     } catch (error) {
       result.errors.push({ sourceKey: profile.sourceKey, message: syncErrorMessage(error) });
-    }
-  }
-
-  if (body.finalizeSnapshot && result.errors.length === 0) {
-    const seen = new Set(snapshotSourceKeys);
-    const missing = (existing ?? []).filter((profile) => !seen.has(profile.source_key));
-    if (missing.length) {
-      const { error } = await supabase.from("profiles").update({ status: "archived" }).in("id", missing.map((profile) => profile.id));
-      if (error) result.errors.push({ sourceKey: "snapshot", message: syncErrorMessage(error) });
-      else result.archived = missing.length;
     }
   }
 

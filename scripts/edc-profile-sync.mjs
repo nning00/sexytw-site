@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target.mjs";
+import { collectCatalog } from "../lib/edc-catalog.mjs";
+import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const localEnvPaths = [join(projectRoot, ".env.sync.local"), join(projectRoot, ".env.local")];
@@ -130,33 +132,18 @@ async function fetchJson(url) {
 }
 
 async function collectProfiles(selectedCity, limit) {
-  const latestByCity = new Map();
-  let page = 1;
-  let totalPages = 1;
-  do {
-    const url = new URL(sourceApi);
-    url.searchParams.set("per_page", "100");
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("orderby", "date");
-    url.searchParams.set("order", "desc");
-    const { data, headers } = await fetchJson(url);
-    totalPages = Number(headers.get("x-wp-totalpages") || totalPages);
-    for (const product of data) {
-      const profile = normalizeProduct(product);
-      if (!profile || (selectedCity && profile.cityName !== selectedCity)) continue;
-      const list = latestByCity.get(profile.cityName) || [];
-      if (!list.some((item) => item.sourceKey === profile.sourceKey)) {
-        list.push(profile);
-        latestByCity.set(profile.cityName, list);
-      }
-    }
-    const collected = [...latestByCity.values()].flat().length;
-    console.log(`來源頁 ${page}/${totalPages}，已整理 ${collected} 筆`);
-    if (limit > 0 && collected >= limit) break;
-    page += 1;
-  } while (page <= totalPages);
-  const profiles = [...latestByCity.values()].flat();
-  return limit > 0 ? profiles.slice(0, limit) : profiles;
+  return collectCatalog({ selectedCity, limit, normalizeProduct,
+    fetchPage: async (page) => {
+      const url = new URL(sourceApi);
+      url.searchParams.set("per_page", "100");
+      url.searchParams.set("page", String(page));
+      // Stable identity ordering avoids duplicates when products are edited.
+      url.searchParams.set("orderby", "id");
+      url.searchParams.set("order", "asc");
+      return fetchJson(url);
+    },
+    onPage: (page, totalPages, count) => console.log(`來源頁 ${page}/${totalPages}，已整理 ${count} 筆`),
+  });
 }
 
 async function postPayload(payload) {
@@ -167,6 +154,7 @@ async function postPayload(payload) {
   const response = await fetch(endpoint, {
     method: "POST",
     redirect: "error",
+    signal: AbortSignal.timeout(120000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
     body: JSON.stringify(payload),
   });
@@ -199,12 +187,13 @@ const limit = Math.max(Number(argValue("--limit") || "0"), 0);
 if (selectedCity && !knownCities.has(selectedCity)) throw new Error(`不支援的城市：${selectedCity}`);
 
 const capturedAt = new Date().toISOString();
-const profiles = await collectProfiles(selectedCity, limit);
+const catalogue = await collectProfiles(selectedCity, limit);
+const { profiles } = catalogue;
 const syncableProfiles = profiles.filter(isVerifiedAdult);
 const pendingReviewProfiles = profiles.filter((profile) => !isVerifiedAdult(profile));
 const outputPath = join(projectRoot, "outputs", `edc-sync-${capturedAt.replace(/[:.]/g, "-")}.json`);
 mkdirSync(dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, JSON.stringify({ capturedAt, candidateCount: profiles.length, verifiedAdultCount: syncableProfiles.length, pendingAdultReviewCount: pendingReviewProfiles.length, profiles }, null, 2));
+writeFileSync(outputPath, JSON.stringify({ capturedAt, candidateCount: profiles.length, verifiedAdultCount: syncableProfiles.length, pendingAdultReviewCount: pendingReviewProfiles.length, snapshotProof: catalogue.snapshotProof, profiles }, null, 2));
 console.log(`預覽資料：${outputPath}`);
 console.log(`候選 ${profiles.length} 筆；可確認成年 ${syncableProfiles.length} 筆；待後台確認成年 ${pendingReviewProfiles.length} 筆；${[...new Set(profiles.map((profile) => profile.cityName))].length} 個城市`);
 
@@ -219,13 +208,15 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
   const totals = { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: 0 };
   async function syncChunk(chunk, index) {
     let response;
+    let succeeded = false;
     let terminalHttpError = "";
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
         response = await postPayload({ mode: commit ? "commit" : "preview", capturedAt, deferRevalidation: true, profiles: chunk });
+        if (!response || !response.summary || !response.result && commit) throw new Error("Invalid sync batch response.");
         const attemptErrors = response?.result?.errors || [];
         const blockingErrors = attemptErrors.filter((item) => item?.message !== "image-download-404");
-        if (!blockingErrors.length) break;
+        if (!blockingErrors.length) { succeeded = true; break; }
         console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次嘗試失敗：${JSON.stringify(blockingErrors)}`);
       } catch (error) {
         terminalHttpError = errorMessage(error);
@@ -233,7 +224,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
       }
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
     }
-    if (!response) {
+    if (!response || !succeeded) {
       console.error(`批次 ${index + 1}/${chunks.length} 已略過並繼續後續資料：${terminalHttpError}`);
       return { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: chunk.length };
     }
@@ -268,14 +259,16 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
-  if (commit && !selectedCity && limit === 0 && totals.errors === 0) {
-    const finalResult = await postPayload({ mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: profiles.map((profile) => profile.sourceKey) });
-    if (finalResult?.ok !== true || finalResult?.result?.errors?.length) {
-      throw new Error("Final snapshot cleanup failed; check the sync API before trusting this run.");
-    }
+  if (commit && !selectedCity && limit === 0 && totals.errors === 0 && totals.warnings === 0) {
+    const cleanupTotals = await finishSnapshot(postPayload,
+      { mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: catalogue.sourceKeys, snapshotProof: catalogue.snapshotProof },
+      { pause: () => new Promise((resolve) => setTimeout(resolve, 350)),
+        onPage: (pass, page) => console.log(`Cleanup pass ${pass}: ${JSON.stringify(page)}`) });
+    console.log(`Cleanup totals: ${JSON.stringify(cleanupTotals)}`);
   }
   console.log(JSON.stringify(totals, null, 2));
-  if (totals.errors) throw new Error(`同步完成但有 ${totals.errors} 筆錯誤；已保留既有資料並略過封存，下次排程會重試。`);
+  if (totals.errors) throw new Error(`同步完成但有 ${totals.errors} 筆錯誤；已保留既有資料並略過刪除，下次排程會重試。`);
+  if (totals.warnings) throw new Error("Source image warnings were present; permanent cleanup was skipped for safety.");
 } else {
   console.log("尚未設定 PROFILE_SYNC_ENDPOINT / PROFILE_SYNC_SECRET，因此只建立本機預覽，不會修改正式網站。 ");
 }
