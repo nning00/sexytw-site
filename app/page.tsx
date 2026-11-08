@@ -4,7 +4,7 @@ import Link from "next/link";
 import AgeGate from "@/components/AgeGate";
 import RegionNav from "@/components/RegionNav";
 import MobileMenu from "@/components/MobileMenu";
-import { getContentSettings, getPublicNavigation, getPublishedArticles, getSiteSettings, mediaUrl, serviceMediaUrl } from "@/lib/cms";
+import { getContentSettings, getPublicNavigation, getHomeArticleCards, getSiteSettings, mediaUrl, serviceMediaUrl } from "@/lib/cms";
 import ArticleCards from "@/components/ArticleCards";
 import JsonLd from "@/components/JsonLd";
 import { regions as fallbackRegions } from "@/data/regions";
@@ -22,8 +22,7 @@ const fallbackFaqs = [
 ];
 
 export default async function Home() {
-  const [settings, content, navigation, publishedArticles] = await Promise.all([getSiteSettings(), getContentSettings(), getPublicNavigation(), getPublishedArticles()]);
-  const featuredArticles = publishedArticles.filter((item) => item.is_featured).sort((a,b) => (a.featured_order ?? 0) - (b.featured_order ?? 0)).slice(0, 3);
+  const [settings, content, navigation, homeArticles] = await Promise.all([getSiteSettings(), getContentSettings(), getPublicNavigation(), getHomeArticleCards().catch(() => [])]);
   const faqItems = content.faqs.length ? content.faqs : fallbackFaqs;
   const faqStructuredData = {
     "@context": "https://schema.org",
@@ -182,7 +181,7 @@ export default async function Home() {
 
       <section className="home-articles section" id="articles">
         <div className="section-heading centered"><h2>{settings.navigation.hot_articles}</h2><p>精選實用指南與最新內容，也可以依分類瀏覽完整文章。</p></div>
-        <ArticleCards articles={featuredArticles.length ? featuredArticles : publishedArticles.slice(0, 3)} />
+        <ArticleCards articles={homeArticles} />
         <div className="home-articles-action"><Link className="button secondary" href="/articles">瀏覽全部文章</Link></div>
       </section>
 

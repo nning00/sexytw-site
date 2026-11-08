@@ -20,7 +20,7 @@ jobs:
           node-version: "22"
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: node --test scripts/profile-sync-target.test.mjs scripts/profile-sync-dispatch.test.mjs scripts/profile-sync-snapshot.test.mjs
+      - run: node --test scripts/home-performance.test.mjs scripts/profile-sync-target.test.mjs scripts/profile-sync-dispatch.test.mjs scripts/profile-sync-snapshot.test.mjs
       - run: pnpm build
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3

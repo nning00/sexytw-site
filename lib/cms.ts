@@ -1,6 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { normalizeImagePosition } from "@/lib/image-position";
+import { mediaUrl } from "@/lib/media-url";
+import { publicReadOnce } from "@/lib/public-read-scope.mjs";
+import { queryHomeArticleCards } from "@/lib/home-article-cards.mjs";
+export { mediaUrl } from "@/lib/media-url";
 
 export type CmsProfile = {
   id: string; slug: string; display_name: string; style: string | null; interest: string | null;
@@ -22,12 +26,9 @@ export type CmsArticle = {
 
 export type ArticleCategory = { id: string; name: string; slug: string; sort_order: number; published: boolean; seo_title: string | null; seo_description: string | null };
 
-export function mediaUrl(path: string | null | undefined) {
-  if (!path) return "/placeholders/hero.svg";
-  if (/^https?:\/\//.test(path) || path.startsWith("/")) return path;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return base ? `${base}/storage/v1/object/public/site-media/${path}` : "/placeholders/hero.svg";
-}
+export type ArticleCard = Pick<CmsArticle, "id" | "slug" | "title" | "excerpt" | "category" | "cover_image_path" | "cover_image_alt"> & {
+  article_categories?: Pick<ArticleCategory, "name"> | null;
+};
 
 export function serviceMediaUrl(path: string | null | undefined, fallback: string | null | undefined) {
   // The original template used local demo files that are intentionally not
@@ -250,7 +251,10 @@ async function getPublicSettingsBundleUncached() {
 }
 
 const cacheOptions = { revalidate: 300 } as const;
-const getPublicSettingsBundle = unstable_cache(getPublicSettingsBundleUncached, ["public-settings-bundle"], { ...cacheOptions, tags: ["site-settings"] });
+const cachedPublicSettingsBundle = unstable_cache(getPublicSettingsBundleUncached, ["public-settings-bundle"], { ...cacheOptions, tags: ["site-settings"] });
+const getPublicSettingsBundle = () => publicReadOnce("cms_settings", cachedPublicSettingsBundle) as ReturnType<typeof cachedPublicSettingsBundle>;
+const cachedHomeArticleCards = unstable_cache(async () => queryHomeArticleCards(createPublicClient()) as Promise<ArticleCard[]>, ["home-article-cards-v1"], { ...cacheOptions, tags: ["articles"] });
+export const getHomeArticleCards = () => publicReadOnce("cms_home_articles", cachedHomeArticleCards) as Promise<ArticleCard[]>;
 
 export const getPublishedProfiles = unstable_cache(getPublishedProfilesUncached, ["published-profiles"], { ...cacheOptions, tags: ["profiles"] });
 export const getPublishedProfilesForCity = unstable_cache(getPublishedProfilesForCityUncached, ["published-profiles-city"], { ...cacheOptions, tags: ["profiles", "regions"] });
@@ -258,7 +262,8 @@ export const getPublishedProfilePageForCity = unstable_cache(getPublishedProfile
 export const getPublishedProfile = unstable_cache(getPublishedProfileUncached, ["published-profile"], { ...cacheOptions, tags: ["profiles"] });
 export const getRelatedProfiles = unstable_cache(getRelatedProfilesUncached, ["related-profiles"], { ...cacheOptions, tags: ["profiles", "regions"] });
 export const getPublishedArticles = unstable_cache(getPublishedArticlesUncached, ["published-articles"], { ...cacheOptions, tags: ["articles"] });
-export const getPublicNavigation = unstable_cache(getPublicNavigationUncached, ["public-navigation"], { ...cacheOptions, tags: ["regions", "articles"] });
+const cachedPublicNavigation = unstable_cache(getPublicNavigationUncached, ["public-navigation"], { ...cacheOptions, tags: ["regions", "articles"] });
+export const getPublicNavigation = () => publicReadOnce("cms_navigation", cachedPublicNavigation) as ReturnType<typeof cachedPublicNavigation>;
 export const getPublishedArticle = unstable_cache(getPublishedArticleUncached, ["published-article"], { ...cacheOptions, tags: ["articles"] });
 export const getArticleCategories = unstable_cache(getArticleCategoriesUncached, ["article-categories"], { ...cacheOptions, tags: ["articles", "article-categories"] });
 export async function getSiteSettings() {

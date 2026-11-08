@@ -6,7 +6,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { LONG_IMAGE_CACHE_SECONDS, prepareImageForUpload } from "@/lib/image-upload";
 import { refreshPublicContent } from "@/lib/refresh-public-content";
-import { mediaUrl } from "@/lib/cms";
+import { mediaUrl } from "@/lib/media-url";
 import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 
 type City = {

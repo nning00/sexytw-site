@@ -1,6 +1,7 @@
 import handler from "vinext/server/fetch-handler";
 import { getOriginalFetch } from "vinext/shims/fetch-cache";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
+import { withPublicReadScope } from "../lib/public-read-scope.mjs";
 
 const worker = {
   async scheduled(controller: ScheduledController, env: Cloudflare.Env) {
@@ -31,8 +32,16 @@ const worker = {
       return Response.redirect(requestUrl.toString(), 308);
     }
 
-    const response = await handler.fetch(request, env, ctx);
+    const publicHome = request.method === "GET" && requestUrl.pathname === "/";
+    const rendered = publicHome
+      ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
+      : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
+    const response = rendered.response;
     const securedResponse = new Response(response.body, response);
+    // Aggregate timings only; no query text, identifiers, credentials or user data.
+    if (rendered.serverTiming && !request.headers.has("authorization") && !request.headers.has("cookie") && response.ok) {
+      securedResponse.headers.append("Server-Timing", rendered.serverTiming);
+    }
     if (requestUrl.protocol === "https:") {
       securedResponse.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
