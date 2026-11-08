@@ -2,8 +2,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { notifyIndexNow } from "@/lib/indexnow";
 import { createClient } from "@/lib/supabase/server";
-
-const allowedTags = new Set(["site-settings", "profiles", "regions", "articles"]);
+import { parseRevalidationInput } from "@/lib/json-payload.mjs";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -17,11 +16,8 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await request.json().catch(() => ({ tags: [], indexNowPaths: [] }));
-  const requestedTags: unknown[] = Array.isArray(body.tags) ? body.tags : [];
-  const tags: string[] = [...new Set(requestedTags.filter(
-    (tag): tag is string => typeof tag === "string" && allowedTags.has(tag),
-  ))];
+  const body: unknown = await request.json().catch(() => null);
+  const { tags, indexNowPaths } = parseRevalidationInput(body);
 
   for (const tag of tags) revalidateTag(tag, { expire: 0 });
   revalidatePath("/", "layout");
@@ -29,8 +25,6 @@ export async function POST(request: Request) {
     revalidatePath("/sitemap.xml");
   }
 
-  const requestedPaths: unknown[] = Array.isArray(body.indexNowPaths) ? body.indexNowPaths : [];
-  const indexNowPaths = requestedPaths.filter((path): path is string => typeof path === "string");
   const indexNow = await notifyIndexNow(indexNowPaths).catch((error: unknown) => ({
     submitted: false,
     reason: error instanceof Error ? error.message : "unknown-error",

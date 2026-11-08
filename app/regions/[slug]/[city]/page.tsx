@@ -21,8 +21,10 @@ export const revalidate = 300;
 // response instead of making the Worker rebuild every page on every request.
 // Admin saves and profile syncs explicitly invalidate the related cache tags.
 
-export function generateStaticParams() {
-  return regions.flatMap((region) => region.cities.map((city) => ({ slug: region.slug, city: city.slug })));
+export function generateStaticParams(): Array<{ slug: string; city: string }> {
+  // Cities are managed in Supabase, not the template's neutral example data.
+  // Keep ISR generation on demand; getLocation enforces current visibility.
+  return [];
 }
 
 const getLocation = unstable_cache(async (regionSlug: string, citySlug: string) => {

@@ -4,6 +4,33 @@ import { queryHomeArticleCards, homeCardFields } from "../lib/home-article-cards
 import { publicReadOnce, withPublicReadScope } from "../lib/public-read-scope.mjs";
 import { unstable_cache, revalidateTag } from "vinext/shims/cache";
 
+test("slow diagnostic contains only fixed stages and clears after completion", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const messages=[];
+  t.mock.method(console,"warn",text=>messages.push(JSON.parse(text)));
+  let release;
+  const pending=new Promise(resolve=>{release=resolve;});
+  const render=withPublicReadScope(()=>publicReadOnce("cms_settings",()=>pending));
+  t.mock.timers.tick(10000);
+  assert.equal(messages.length,1);
+  assert.equal(messages[0].event,"sexytw-home-slow-stage");
+  assert.deepEqual(messages[0].pending,["cms_settings"]);
+  assert.deepEqual(messages[0].completed,{});
+  release(new Response("ok"));
+  await render;
+  t.mock.timers.tick(20000);
+  assert.equal(messages.length,1);
+});
+
+test("successful and failed fast renders leave no delayed diagnostic", async t => {
+  t.mock.timers.enable({apis:["setTimeout"]});
+  const warn=t.mock.method(console,"warn",()=>{});
+  await withPublicReadScope(async()=>new Response("ok"));
+  await assert.rejects(withPublicReadScope(async()=>{throw new Error("do-not-log-this") }));
+  t.mock.timers.tick(20000);
+  assert.equal(warn.mock.callCount(),0);
+});
+
 test("request sharing retains framework tag invalidation between renders", async () => {
   let reads=0;
   const cached=unstable_cache(async()=>++reads,["home-performance-test-only"],{revalidate:300,tags:["home-performance-test-only"]});

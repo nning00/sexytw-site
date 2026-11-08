@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { prepareImageForUpload } from "@/lib/image-upload";
 import { refreshPublicContent } from "@/lib/refresh-public-content";
+import { parseArticleSaveResponse } from "@/lib/json-payload.mjs";
 
 type Category = { id: string; name: string };
 type ExistingImage = { id: string; storage_path: string; alt_text: string | null; sort_order: number };
@@ -57,7 +58,7 @@ export default function ArticleForm({ initial, categories, existingImages = [] }
       body: form,
       signal: AbortSignal.timeout(60_000),
     });
-    const result = await response.json().catch(() => ({}));
+    const result = parseArticleSaveResponse(await response.json().catch(() => null));
     if (!response.ok || !result.ok) throw new Error(result.error || "儲存請求失敗，請稍後再試。");
 
     await refreshPublicContent(["articles"], result.indexNowPaths ?? []).catch(() => undefined);

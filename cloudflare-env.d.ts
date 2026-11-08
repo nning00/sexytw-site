@@ -1,5 +1,7 @@
 declare namespace Cloudflare {
   interface Env {
+    // Optional example only. This declaration does not provision/bind a D1 DB.
+    DB?: D1Database;
     NEXT_PUBLIC_SUPABASE_URL?: string;
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
     NEXT_PUBLIC_SUPABASE_SCHEMA?: string;
