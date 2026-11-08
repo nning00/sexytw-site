@@ -102,6 +102,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!article) notFound();
   const date = "published_at" in article && article.published_at ? article.published_at.slice(0, 10) : "date" in article ? article.date : "";
   const paragraphs = "content" in article ? articleParagraphs(article.content) : [];
+  const readingLinks = "sections" in article
+    ? article.sections.map(([heading], index) => ({ id: `article-section-${index + 1}`, label: heading }))
+    : paragraphs.map((paragraph, index) => ({ id: `article-section-${index + 1}`, label: `${paragraph.slice(0, 24)}${paragraph.length > 24 ? "…" : ""}` }));
   const categorySlug = "article_categories" in article ? article.article_categories?.slug : undefined;
   const coverImage = "cover_image_path" in article ? article.cover_image_path : null;
   const coverAlt = "cover_image_alt" in article ? article.cover_image_alt || article.title : article.title;
@@ -150,10 +153,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         <h1>{article.title}</h1>
         <p className="article-date">發布日期：{date}</p>
         <p className="article-lead">{article.excerpt}</p>
+        {readingLinks.length > 1 && <nav className="article-toc" aria-label="文章段落導覽"><details><summary>文章導覽（{readingLinks.length} 段）</summary><ol>{readingLinks.map(item => <li key={item.id}><a href={`#${item.id}`}>{item.label}</a></li>)}</ol></details></nav>}
         {coverImage && <figure className="article-cover"><Image src={mediaUrl(coverImage)} alt={coverAlt} fill sizes="(max-width: 560px) calc(100vw - 50px), 740px" priority /></figure>}
         {"sections" in article
-          ? article.sections.map(([heading, content]) => <section key={heading}><h2>{heading}</h2><p>{content}</p></section>)
-          : paragraphs.map((paragraph, index) => <section key={`${index}-${paragraph.slice(0, 12)}`}><p>{paragraph}</p></section>)}
+          ? article.sections.map(([heading, content], index) => <section id={`article-section-${index + 1}`} key={heading}><h2>{heading}</h2><p>{content}</p></section>)
+          : paragraphs.map((paragraph, index) => <section id={`article-section-${index + 1}`} key={`${index}-${paragraph.slice(0, 12)}`}><p>{paragraph}</p></section>)}
         {articleImages.length > 0 && <section className="article-body-gallery" aria-label="文章圖片">
           {articleImages.map((image, index) => <figure key={image.id || `${image.storage_path}-${index}`}>
             <Image src={mediaUrl(image.storage_path)} alt={image.alt_text || `${article.title}文章圖片 ${index + 1}`} fill sizes="(max-width: 560px) calc(100vw - 50px), 740px" />

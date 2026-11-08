@@ -65,14 +65,14 @@ export default function RegionNavClient({ regions, articles, hotArticlesLabel }:
     {regions.map((region) => <div className={`region-dropdown${openRegion === region.slug ? " is-open" : ""}`} key={region.slug}>
       <button className="region-dropdown-trigger" type="button" aria-expanded={openRegion === region.slug} onClick={(event) => toggleRegion(event, region.slug)}>{region.name}<span aria-hidden="true">⌄</span></button>
       {openRegion === region.slug && typeof document !== "undefined" && createPortal(<div className="region-dropdown-menu" style={menuStyle}>
-        {region.cities.map((city) => <Link href={`/regions/${region.slug}/${city.slug}`} key={`${region.slug}-${city.slug}`} onClick={() => setOpenRegion(null)}>{city.name}</Link>)}
+        {region.cities.map((city) => <Link prefetch={false} href={`/regions/${region.slug}/${city.slug}`} key={`${region.slug}-${city.slug}`} onClick={() => setOpenRegion(null)}>{city.name}</Link>)}
       </div>, document.body)}
     </div>)}
     <div className={`region-dropdown article-dropdown${openRegion === "articles" ? " is-open" : ""}`}>
       <button className="region-dropdown-trigger" type="button" aria-expanded={openRegion === "articles"} onClick={(event) => toggleRegion(event, "articles")}>{hotArticlesLabel}<span aria-hidden="true">⌄</span></button>
       {openRegion === "articles" && typeof document !== "undefined" && createPortal(<div className="region-dropdown-menu article-dropdown-menu" style={menuStyle}>
-        <Link href="/articles" onClick={() => setOpenRegion(null)}><strong>瀏覽全部文章</strong></Link>
-        {articles.map((article) => <Link href={`/articles/${article.slug}`} key={article.slug} onClick={() => setOpenRegion(null)}>{article.title}</Link>)}
+        <Link prefetch={false} href="/articles" onClick={() => setOpenRegion(null)}><strong>瀏覽全部文章</strong></Link>
+        {articles.map((article) => <Link prefetch={false} href={`/articles/${article.slug}`} key={article.slug} onClick={() => setOpenRegion(null)}>{article.title}</Link>)}
       </div>, document.body)}
     </div>
   </nav>;

@@ -8,9 +8,7 @@ import { getSiteSettings, mediaUrl } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { absoluteUrl, siteUrl } from "@/lib/structured-data";
 import "./globals.css";
-import "./sunrise.css";
-import "./pastel-finish.css";
-import "./sexytw-editorial.css";
+import "./site-theme.css";
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "";
 const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL;

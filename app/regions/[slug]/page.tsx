@@ -96,11 +96,12 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
     </header>
     <RegionNav />
     <section className="region-hero">
-      <div className="region-hero-image"><Image src={image} alt={`${region.name}專區形象照`} fill priority unoptimized={image.startsWith("http")} sizes="(max-width: 800px) 100vw, 54vw" /></div>
+      <div className="region-hero-image"><Image src={image} alt={`${region.name}專區形象照`} width={900} height={1200} priority unoptimized={image.startsWith("http")} sizes="(max-width: 700px) 200px, 300px" /></div>
       <div className="region-hero-copy">
         <p className="eyebrow">{region.english_name || "TAIWAN REGION"}</p>
         <h1>{region.name}</h1>
-        <p>{region.summary || `瀏覽${region.name}各城市的公開形象資料與服務資訊。`}</p>
+        <p className="region-summary-preview">{(region.summary || `瀏覽${region.name}各城市的公開形象資料與服務資訊。`).slice(0, 64)}{region.summary && region.summary.length > 64 ? "…" : ""}</p>
+        {region.summary && region.summary.length > 64 && <details className="region-summary-full"><summary>閱讀完整專區介紹</summary><p>{region.summary}</p></details>}
         <Link className="button primary" href={`/regions/${region.slug}/${region.cities[0].slug}`}>開始瀏覽{region.cities[0].name}</Link>
       </div>
     </section>
