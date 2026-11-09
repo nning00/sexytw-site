@@ -160,8 +160,18 @@
 .profile-summary > div { background: linear-gradient(135deg,var(--pale),#f3f9fd); }
 .profile-carousel { border-color: #bcded8; }
 .profile-carousel-stage { background: #eaf4f2; }
-.age-gate { background: rgba(38,63,75,.72); }
-.age-card { background: linear-gradient(145deg,#fff,var(--pale) 58%,#fff9dd); }
+.age-gate { --age-gutter: 24px; z-index: 2147483001; padding: var(--age-gutter); overflow: hidden; overscroll-behavior: contain; background: rgba(38,63,75,.72); }
+.age-card { max-height: calc(100vh - 2 * var(--age-gutter)); max-height: calc(100dvh - 2 * var(--age-gutter)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 10px; scrollbar-gutter: stable; background: linear-gradient(145deg,#fff,var(--pale) 58%,#fff9dd); }
+.age-card small { color: var(--muted); }
+.age-card h2:focus { outline: none; }
+@media (max-width: 600px) { .age-gate { --age-gutter: 12px; } }
+@media (max-height: 600px) {
+  .age-gate .age-card { padding: 20px 24px; }
+  .age-mark { width: 48px; height: 48px; margin-bottom: 12px; font-size: 22px; }
+  .age-card h2 { font-size: 28px; }
+  .age-card > p:not(.eyebrow) { margin: 12px 0 16px; }
+  .age-card small { margin-top: 12px; }
+}
 .age-mark { background: linear-gradient(135deg,var(--deep-rose),var(--teal)); }
 .front-top-button { color: var(--teal); border-color: #bcded8; }
 
