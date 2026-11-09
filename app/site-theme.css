@@ -628,6 +628,23 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
 .article-toc summary { min-height: var(--tw-touch-size); display: list-item; padding-block: 10px; cursor: pointer; font-weight: 600; }
 .article-toc ol { margin: 8px 0; padding-left: 24px; }
 .article-toc a { display: inline-block; min-height: var(--tw-touch-size); padding-block: 10px; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; }
+.article-paragraph { scroll-margin-top: 156px; }
+.article-paragraph + .article-paragraph { margin-top: 1rem; }
+.article-paragraph h3 { margin-bottom: .5rem; font-size: 1.1rem; }
+.article-paragraph p { margin: 0; white-space: pre-line; }
+.article-empty a { margin-inline-start: .5rem; text-decoration: underline; }
+.legal-updated, .legal-note, .detail-copy small, .article-notice, .profile-detail-copy .breadcrumbs { color: var(--muted); }
+.profile-route-back { display: none; }
+.not-found-page { padding: clamp(24px, 8vw, 96px) var(--tw-page-gutter); }
+.not-found-card { max-width: 640px; margin-inline: auto; padding: clamp(20px, 5vw, 48px); background: white; border: 1px solid var(--line); border-radius: 8px; }
+.not-found-card h1 { font-size: clamp(30px, 4.2vw, 48px); }
+.not-found-card > p:not(.eyebrow) { color: var(--muted); line-height: 1.75; }
+.not-found-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.not-found-actions .button { min-width: 0; }
+@media (max-width: 700px) {
+  .profile-route-back { display: block; padding: 4px var(--tw-page-gutter) 0; }
+  .profile-route-back a { min-height: var(--tw-touch-size); display: inline-flex; align-items: center; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; }
+}
 
 @media(max-width:980px) {
   .home-page .hero { grid-template-columns: minmax(0,1.3fr) minmax(200px,1fr); }
@@ -664,7 +681,7 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
   .city-card { padding: 20px; }
   .article-category-tabs { justify-content: flex-start; }
   .article-shell h1 { font-size: clamp(26px,7.2vw,30px); }
-  .article-shell section { scroll-margin-top: 88px; }
+  .article-shell section, .article-paragraph { scroll-margin-top: 88px; }
   .article-center>header .eyebrow { display: none; }
 }
 @media(prefers-reduced-motion:reduce) {

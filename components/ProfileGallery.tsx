@@ -27,11 +27,11 @@ export default function ProfileGallery({ images }: { images: GalleryImage[] }) {
       {total > 1 && <>
         <button className="profile-carousel-arrow previous" type="button" onClick={() => move(-1)} aria-label="上一張照片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" /></svg></button>
         <button className="profile-carousel-arrow next" type="button" onClick={() => move(1)} aria-label="下一張照片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
-        <span className="profile-carousel-count">{active + 1} / {total}</span>
+        <span className="profile-carousel-count" role="status" aria-atomic="true">{active + 1} / {total}</span>
       </>}
     </div>
     {total > 1 && <div className="profile-carousel-thumbs">
-      {images.map((image, index) => <button className={`${index === active ? "active" : ""} ${isVideo(image.src) ? "video-thumb" : ""}`} type="button" onClick={() => setActive(index)} aria-label={`查看第 ${index + 1} 個相簿內容`} key={`${image.src}-${index}`}>
+      {images.map((image, index) => <button className={`${index === active ? "active" : ""} ${isVideo(image.src) ? "video-thumb" : ""}`} type="button" onClick={() => setActive(index)} aria-pressed={index === active} aria-label={`查看第 ${index + 1} 個相簿內容`} key={`${image.src}-${index}`}>
         {isVideo(image.src) ? <span aria-hidden="true">▶</span> : <Image src={image.src} alt="" fill loader={isSupabaseMedia(image.src) ? supabaseImageLoader : undefined} quality={58} sizes="76px" />}
       </button>)}
     </div>}

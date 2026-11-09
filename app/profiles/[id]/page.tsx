@@ -6,6 +6,7 @@ import AgeGate from "@/components/AgeGate";
 import MobileMenu from "@/components/MobileMenu";
 import OptimizedMediaImage from "@/components/OptimizedMediaImage";
 import ProfileGallery from "@/components/ProfileGallery";
+import ProfileBackLink from "@/components/ProfileBackLink";
 import RegionNav from "@/components/RegionNav";
 import DetailHeaderActions from "@/components/DetailHeaderActions";
 import { profileExamples } from "@/data/profiles";
@@ -109,9 +110,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
       <header className="detail-header">
         <MobileMenu />
         <Link className="brand" href="/"><BrandMark /><span>{settings.brand.name}</span></Link>
-        <DetailHeaderActions backHref="/#gallery" backLabel="返回形象列表" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
+        <DetailHeaderActions backHref="/#gallery" backLabel="返回首頁相簿" backLink={<ProfileBackLink className="detail-back-link" />} lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
+      <div className="profile-route-back"><ProfileBackLink /></div>
       <section className="profile-detail-hero">
         <ProfileGallery images={gallery} />
         <div className="profile-detail-copy">

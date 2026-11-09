@@ -9,6 +9,7 @@ import { articleCategoryName } from "@/components/ArticleCards";
 import JsonLd from "@/components/JsonLd";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { absoluteUrl, breadcrumbStructuredData, imageStructuredData, siteUrl } from "@/lib/structured-data";
+import { groupArticleParagraphs } from "@/lib/article-outline.mjs";
 
 type ContextualArticleLink = { href: string; label: string };
 
@@ -101,10 +102,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   ]);
   if (!article) notFound();
   const date = "published_at" in article && article.published_at ? article.published_at.slice(0, 10) : "date" in article ? article.date : "";
-  const paragraphs = "content" in article ? articleParagraphs(article.content) : [];
-  const readingLinks = "sections" in article
-    ? article.sections.map(([heading], index) => ({ id: `article-section-${index + 1}`, label: heading }))
-    : paragraphs.map((paragraph, index) => ({ id: `article-section-${index + 1}`, label: `${paragraph.slice(0, 24)}${paragraph.length > 24 ? "…" : ""}` }));
+  const chapters = "sections" in article
+    ? article.sections.map(([title, text], index) => ({ title, blocks: [{ id: "article-section-" + (index + 1), heading: "", text }] }))
+    : groupArticleParagraphs(article.slug, articleParagraphs(article.content));
+  const readingLinks = chapters.flatMap(chapter => chapter.title ? [{ id: chapter.blocks[0].id, label: chapter.title }] : []);
   const categorySlug = "article_categories" in article ? article.article_categories?.slug : undefined;
   const coverImage = "cover_image_path" in article ? article.cover_image_path : null;
   const coverAlt = "cover_image_alt" in article ? article.cover_image_alt || article.title : article.title;
@@ -149,15 +150,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <JsonLd data={articleStructuredData} />
       <article className="article-shell">
         <div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><Link href="/articles">全部文章</Link>{categorySlug && <><span>/</span><Link href={`/articles/category/${categorySlug}`}>{categoryName}</Link></>}</div>
-        <p className="eyebrow">{categoryName} · SEO ARTICLE</p>
+        <p className="eyebrow">{categoryName}</p>
         <h1>{article.title}</h1>
         <p className="article-date">發布日期：{date}</p>
         <p className="article-lead">{article.excerpt}</p>
-        {readingLinks.length > 1 && <nav className="article-toc" aria-label="文章段落導覽"><details><summary>文章導覽（{readingLinks.length} 段）</summary><ol>{readingLinks.map(item => <li key={item.id}><a href={`#${item.id}`}>{item.label}</a></li>)}</ol></details></nav>}
+        {readingLinks.length > 1 && <nav className="article-toc" aria-label="文章段落導覽"><details><summary>文章目錄（{readingLinks.length} 節）</summary><ol>{readingLinks.map(item => <li key={item.id}><a href={`#${item.id}`}>{item.label}</a></li>)}</ol></details></nav>}
         {coverImage && <figure className="article-cover"><Image src={mediaUrl(coverImage)} alt={coverAlt} fill sizes="(max-width: 560px) calc(100vw - 50px), 740px" priority /></figure>}
-        {"sections" in article
-          ? article.sections.map(([heading, content], index) => <section id={`article-section-${index + 1}`} key={heading}><h2>{heading}</h2><p>{content}</p></section>)
-          : paragraphs.map((paragraph, index) => <section id={`article-section-${index + 1}`} key={`${index}-${paragraph.slice(0, 12)}`}><p>{paragraph}</p></section>)}
+        {chapters.map(chapter => <section className="article-chapter" id={chapter.blocks[0].id} key={chapter.blocks[0].id}>
+          {chapter.title && <h2>{chapter.title}</h2>}
+          {chapter.blocks.map((block, index) => <div className="article-paragraph" id={index ? block.id : undefined} key={block.id}>
+            {block.heading && <h3>{block.heading}</h3>}
+            {block.text && <p>{block.text}</p>}
+          </div>)}
+        </section>)}
         {articleImages.length > 0 && <section className="article-body-gallery" aria-label="文章圖片">
           {articleImages.map((image, index) => <figure key={image.id || `${image.storage_path}-${index}`}>
             <Image src={mediaUrl(image.storage_path)} alt={image.alt_text || `${article.title}文章圖片 ${index + 1}`} fill sizes="(max-width: 560px) calc(100vw - 50px), 740px" />

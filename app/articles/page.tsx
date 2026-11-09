@@ -4,7 +4,7 @@ import ArticleCards from "@/components/ArticleCards";
 import ArticleCenterNav from "@/components/ArticleCenterNav";
 import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
-import { getArticleCategories, getPublishedArticles } from "@/lib/cms";
+import { getArticleCategories, getHomeArticleCards, getPublishedArticles } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 
@@ -12,8 +12,23 @@ const articlesTitle = "全部文章｜實用指南與熱門內容";
 const articlesDescription = "瀏覽新手指南、預約指南、安全指南、舒壓知識及其他實用文章。";
 export const metadata: Metadata = { title: articlesTitle, description: articlesDescription, alternates: { canonical: "/articles" }, openGraph: completeOpenGraph({ url: "/articles", title: articlesTitle, description: articlesDescription }) };
 export default async function ArticlesPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view } = await searchParams; const [allArticles, categories] = await Promise.all([getPublishedArticles(), getArticleCategories()]);
-  const displayed = view === "featured" ? allArticles.filter((item) => item.is_featured).sort((a,b) => (a.featured_order ?? 0) - (b.featured_order ?? 0)) : allArticles;
-  const breadcrumbData = { "@context": "https://schema.org", ...breadcrumbStructuredData([{ name: "首頁", path: "/" }, { name: view === "featured" ? "熱門文章" : "全部文章", path: "/articles" }]) };
-  return <><SiteHeader /><main className="article-center"><JsonLd data={breadcrumbData} /><header><div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><strong>{view === "featured" ? "熱門文章" : "全部文章"}</strong></div><p className="eyebrow">ARTICLE CENTER</p><h1>{view === "featured" ? "熱門文章" : "全部文章"}</h1><p>依照主題瀏覽網站最新文章、實用說明與注意事項。</p></header><ArticleCenterNav categories={categories} active={view === "featured" ? "featured" : "all"} />{displayed.length ? <ArticleCards articles={displayed} /> : <p className="article-empty">目前這個分類尚無文章。</p>}</main></>;
+  const featured = (await searchParams).view === "featured";
+  const [displayed, categories] = await Promise.all([
+    featured ? getHomeArticleCards().catch(() => []) : getPublishedArticles(),
+    getArticleCategories(),
+  ]);
+  const title = featured ? "熱門文章" : "全部文章";
+  const breadcrumbData = { "@context": "https://schema.org", ...breadcrumbStructuredData([{ name: "首頁", path: "/" }, { name: title, path: "/articles" }]) };
+  return <><SiteHeader /><main className="article-center">
+    <JsonLd data={breadcrumbData} />
+    <header>
+      <div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><strong>{title}</strong></div>
+      <h1>{title}</h1>
+      <p>{featured ? "與首頁同步顯示推薦閱讀，並非依點閱數排行。" : "依照主題瀏覽網站最新文章、實用說明與注意事項。"}</p>
+    </header>
+    <ArticleCenterNav categories={categories} active={featured ? "featured" : "all"} />
+    {displayed.length ? <ArticleCards articles={displayed} /> : <p className="article-empty">
+      {featured ? <>目前沒有可顯示的推薦文章。<Link href="/articles">瀏覽全部文章</Link></> : "目前尚無文章。"}
+    </p>}
+  </main></>;
 }
