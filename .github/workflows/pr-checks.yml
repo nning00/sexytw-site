@@ -1,0 +1,47 @@
+name: PR checks (no deploy)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  test-typecheck-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Install locked dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Test, typecheck and build in an offline network namespace
+        run: |
+          node_bin="$(command -v node)"
+          sudo -n unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+            /usr/bin/setpriv --no-new-privs -- /usr/bin/env -i \
+            PATH="$(dirname "$node_bin"):/usr/bin:/bin" HOME="$RUNNER_TEMP" CI=1 \
+            SEXYTW_CI_FIXTURE_BUILD=1 WRANGLER_SEND_METRICS=false NEXT_TELEMETRY_DISABLED=1 \
+            NEXT_PUBLIC_SUPABASE_URL=https://fixture.invalid NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-fixture-not-a-credential \
+            /bin/bash --noprofile --norc -euo pipefail -c '
+              node --test scripts/*.test.mjs
+              node node_modules/typescript/bin/tsc --noEmit --incremental false
+              node node_modules/vinext/dist/cli.js build
+              node --input-type=module -e "
+                import assert from \"node:assert/strict\";
+                import { readFileSync } from \"node:fs\";
+                const config = JSON.parse(readFileSync(\"dist/server/wrangler.json\", \"utf8\"));
+                assert.equal(config.name, \"sexytw-ci-fixture\");
+                assert.equal(config.vars.NEXT_PUBLIC_SUPABASE_URL, \"https://fixture.invalid\");
+                assert.equal(config.triggers?.crons?.length ?? 0, 0);
+              "
+            '
