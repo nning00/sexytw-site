@@ -1,0 +1,19 @@
+{
+  // Build-only fixture for pull request checks. Never deploy this config.
+  "name": "sexytw-ci-fixture",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://fixture.invalid",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "ci-fixture-not-a-credential",
+    "NEXT_PUBLIC_SUPABASE_SCHEMA": "public",
+    "NEXT_PUBLIC_MEDIA_PREFIX": "ci-fixture",
+    "SITE_URL": "https://sexytw-ci.invalid",
+    "NEXT_PUBLIC_SITE_URL": "https://sexytw-ci.invalid"
+  }
+}
