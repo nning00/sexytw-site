@@ -12,6 +12,7 @@ export default defineConfig(async () => {
     plugins: [
       vinext(),
       cloudflare({
+        ...(process.env.SEXYTW_CI_FIXTURE_BUILD === "1" ? { configPath: "./wrangler.ci.jsonc" } : {}),
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
         config: workerConfig,

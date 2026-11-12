@@ -8,21 +8,47 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sexytw-production-deploy
+  cancel-in-progress: false
+
 jobs:
+  validate:
+    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/pr-checks.yml
+
   deploy:
-    if: github.repository == 'nning00/sexytw-site'
+    needs: validate
+    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
       - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: node --test scripts/json-payload.test.mjs scripts/home-performance.test.mjs scripts/profile-sync-target.test.mjs scripts/profile-sync-dispatch.test.mjs scripts/profile-sync-snapshot.test.mjs
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node --test scripts/*.test.mjs
       - run: pnpm exec tsc --noEmit
-      - run: pnpm build
+      - name: Build production artifact (never reuse fixture build)
+        run: pnpm build
+        env:
+          SEXYTW_CI_FIXTURE_BUILD: "0"
+          WRANGLER_SEND_METRICS: "false"
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Guard production artifact
+        run: |
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            import {readFileSync} from "node:fs";
+            const config = JSON.parse(readFileSync("dist/server/wrangler.json", "utf8"));
+            assert.equal(config.name, "sexytw-site");
+            assert.equal(config.vars.NEXT_PUBLIC_SUPABASE_URL, "https://lsxrpubpbnshlqnnddgu.supabase.co");
+            assert.notEqual(process.env.SEXYTW_CI_FIXTURE_BUILD, "1");
+          '
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
