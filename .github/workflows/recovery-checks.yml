@@ -1,0 +1,19 @@
+name: Validate upsert-only recovery (no deployment)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: node --check scripts/edc-profile-sync.mjs
+      - run: node --test scripts/*.test.mjs
+      - run: pnpm exec tsc --noEmit
