@@ -1,4 +1,4 @@
-name: Validate upsert-only recovery (no deployment)
+name: Validate create-only recovery (no deployment)
 on:
   pull_request:
   workflow_dispatch:
@@ -7,8 +7,25 @@ permissions:
 jobs:
   recovery-checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: fixture_admin
+          POSTGRES_PASSWORD: fixture-only-not-production
+          POSTGRES_DB: sexytw_fixture
+        ports:
+          - 55514:5432
+        options: >-
+          --health-cmd "pg_isready -U fixture_admin -d sexytw_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -17,3 +34,11 @@ jobs:
       - run: node --check scripts/edc-profile-sync.mjs
       - run: node --test scripts/*.test.mjs
       - run: pnpm exec tsc --noEmit
+      - name: Atomic new-profile completion integration (synthetic only)
+        run: node --test tests/recovery-completion.integration.mjs
+        env:
+          PGHOST: '127.0.0.1'
+          PGPORT: '55514'
+          PGDATABASE: sexytw_fixture
+          PGUSER: fixture_admin
+          PGPASSWORD: fixture-only-not-production
