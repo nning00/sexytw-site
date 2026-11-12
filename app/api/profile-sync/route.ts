@@ -205,7 +205,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
       profile_id: profileId,
       source_url: image.url,
       storage_path: storagePath,
-      alt_text: image.alt || `${displayName}�ζH�Ӥ� ${index + 1}`,
+      alt_text: image.alt || `${displayName}形象照片 ${index + 1}`,
       sort_order: index + 1,
     };
     const { error: trackError } = createOnly
@@ -228,7 +228,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
   if (latestError) throw latestError;
   const ordered = images.flatMap((image, index) => {
     const row = latestTracked?.find((candidate) => candidate.source_url === image.url);
-    return row ? [{ ...row, alt_text: image.alt || `${displayName}�ζH�Ӥ� ${index + 1}`, sort_order: index + 1 }] : [];
+    return row ? [{ ...row, alt_text: image.alt || `${displayName}形象照片 ${index + 1}`, sort_order: index + 1 }] : [];
   });
 
   if (previousStoragePaths.length) {
@@ -373,7 +373,7 @@ export async function POST(request: Request) {
           ? current.adult_review_status
           : "pending";
       const targetStatus = reviewStatus === "verified" ? "published" : reviewStatus === "rejected" ? "archived" : "draft";
-      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "�ζH��T"}�U${profile.displayName}�U�s��${profile.sourceKey}`;
+      const seoTitle = `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`;
       const seoDescription = buildProfileSeoDescription(profile.cityName, profile.displayName, profile.details);
       if (current?.source_content_hash === profile.contentHash) {
         const patch = changedFields(current, {
