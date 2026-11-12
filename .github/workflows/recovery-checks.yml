@@ -42,3 +42,8 @@ jobs:
           PGDATABASE: sexytw_fixture
           PGUSER: fixture_admin
           PGPASSWORD: fixture-only-not-production
+      - name: Build without deployment
+        run: pnpm build
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+          NEXT_TELEMETRY_DISABLED: '1'
