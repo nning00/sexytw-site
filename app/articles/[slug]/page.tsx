@@ -7,6 +7,7 @@ import { articleParagraphs, getPublishedArticle, getPublishedArticles, getSiteSe
 import SiteHeader from "@/components/SiteHeader";
 import { articleCategoryName } from "@/components/ArticleCards";
 import JsonLd from "@/components/JsonLd";
+import ArticleReferences from "@/components/ArticleReferences";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { absoluteUrl, breadcrumbStructuredData, imageStructuredData, siteUrl } from "@/lib/structured-data";
 import { groupArticleParagraphs } from "@/lib/article-outline.mjs";
@@ -163,6 +164,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             {block.text && <p>{block.text}</p>}
           </div>)}
         </section>)}
+        <ArticleReferences article={article} />
         {articleImages.length > 0 && <section className="article-body-gallery" aria-label="文章圖片">
           {articleImages.map((image, index) => <figure key={image.id || `${image.storage_path}-${index}`}>
             <Image src={mediaUrl(image.storage_path)} alt={image.alt_text || `${article.title}文章圖片 ${index + 1}`} fill sizes="(max-width: 560px) calc(100vw - 50px), 740px" />
