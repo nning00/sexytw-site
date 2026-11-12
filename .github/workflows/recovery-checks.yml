@@ -1,5 +1,6 @@
 name: Validate create-only recovery (no deployment)
 on:
+  workflow_call:
   pull_request:
   workflow_dispatch:
 permissions:
