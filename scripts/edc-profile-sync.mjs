@@ -212,27 +212,28 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     let response;
     let succeeded = false;
     let terminalHttpError = "";
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const maxAttempts = upsertOnly ? 1 : 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         response = await postPayload(syncBatchPayload({commit,capturedAt,profiles:chunk,upsertOnly}));
         if (!response || !response.summary || !response.result && commit) throw new Error("Invalid sync batch response.");
         const attemptErrors = response?.result?.errors || [];
-        const blockingErrors = attemptErrors.filter((item) => item?.message !== "image-download-404");
+        const blockingErrors = attemptErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
         if (!blockingErrors.length) { succeeded = true; break; }
         console.error(`�妸 ${index + 1}/${chunks.length} �� ${attempt} �����ե��ѡG${JSON.stringify(blockingErrors)}`);
       } catch (error) {
         terminalHttpError = errorMessage(error);
         console.error(`�妸 ${index + 1}/${chunks.length} �� ${attempt} �� HTTP ���ե��ѡG${terminalHttpError}`);
       }
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+      if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
     }
-    if (!response || !succeeded) {
+    if (!response || (!succeeded && !upsertOnly)) {
       console.error(`�妸 ${index + 1}/${chunks.length} �w���L���~������ơG${terminalHttpError}`);
       return { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: chunk.length };
     }
     const responseErrors = response?.result?.errors || [];
-    const warningErrors = responseErrors.filter((item) => item?.message === "image-download-404");
-    const blockingErrors = responseErrors.filter((item) => item?.message !== "image-download-404");
+    const warningErrors = responseErrors.filter((item) => !upsertOnly && item?.message === "image-download-404");
+    const blockingErrors = responseErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
     console.log(`�妸 ${index + 1}/${chunks.length}�G${JSON.stringify(response?.summary || response)}`);
     if (warningErrors.length) {
       console.warn(`�妸ĵ�i�]�ӷ��Ϥ����s�b�A�w���L�^�G${JSON.stringify(warningErrors)}`);
@@ -241,8 +242,8 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
       console.error(`�妸���~�G${JSON.stringify(blockingErrors)}`);
     }
     return {
-      create: response?.summary?.create || 0,
-      update: response?.summary?.update || 0,
+      create: (upsertOnly ? response?.result?.created : response?.summary?.create) || 0,
+      update: (upsertOnly ? response?.result?.updated : response?.summary?.update) || 0,
       unchanged: response?.summary?.unchanged || 0,
       pendingReview: response?.summary?.pendingReview || 0,
       skippedCity: response?.summary?.skippedCity || 0,

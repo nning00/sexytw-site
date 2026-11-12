@@ -10,3 +10,5 @@ test('recovery refreshes caches and seen times using existing API contract',()=>
 test('normal mode still defers',()=>assert.equal(syncBatchPayload({upsertOnly:false}).deferRevalidation,true));
 test('mode explicit and workflow opted in',()=>{assert.equal(recoveryMode([]),false);assert.equal(recoveryMode(['--create-only']),true);assert.match(readFileSync('.github/workflows/profile-sync.yml','utf8'),/--commit --create-only/)});
 test('runner uses tested functions and lowers concurrency',()=>{const s=readFileSync('scripts/edc-profile-sync.mjs','utf8');assert.match(s,/postPayload\(syncBatchPayload/);assert.match(s,/if \(shouldFinalize/);assert.match(s,/upsertOnly \? 1 : 3/)});
+
+test('create-only is one attempt and counts actual writes',()=>{const s=readFileSync('scripts/edc-profile-sync.mjs','utf8');assert.match(s,/maxAttempts = upsertOnly \? 1 : 3/);assert.match(s,/response\?\.result\?\.created/);});

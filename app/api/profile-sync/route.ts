@@ -174,6 +174,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
   const previousStoragePaths = (trackedRows ?? []).map((row) => row.storage_path);
   const tracked = new Map((trackedRows ?? []).map((row) => [row.source_url, row.storage_path]));
   const desired = new Set(images.map((image) => image.url));
+  const insertedProof: Array<{storage_path:string;source_url:string;alt_text:string;sort_order:number}> = [];
 
   const removed = (trackedRows ?? []).filter((row) => !desired.has(row.source_url));
   if (removed.length) {
@@ -211,8 +212,15 @@ async function syncImages(profileId: string, displayName: string, images: Source
       ? await supabase.from("profile_source_images").insert(trackPayload)
       : await supabase.from("profile_source_images").upsert(trackPayload);
     if (trackError) throw trackError;
+    if(createOnly) insertedProof.push(trackPayload);
   }
 
+  if(createOnly) {
+    if(insertedProof.length !== images.length || !insertedProof.length) throw new Error("New profile requires complete images");
+    const {error: newImagesError} = await supabase.from("profile_images").insert(insertedProof.map(row=>({profile_id:profileId,storage_path:row.storage_path,alt_text:row.alt_text,sort_order:row.sort_order})));
+    if(newImagesError) throw newImagesError;
+    return {coverPath:insertedProof[0].storage_path,proof:insertedProof};
+  }
   const { data: latestTracked, error: latestError } = await supabase
     .from("profile_source_images")
     .select("source_url,storage_path,alt_text,sort_order")
@@ -249,6 +257,10 @@ export async function GET(request: Request) {
     const { error } = await client.from("profiles").select("id").limit(1);
     if (error) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
     const recovery = request.headers.get("X-Sync-Recovery") === "create-only-v1";
+    if(recovery) {
+      const {data: capability,error: capabilityError} = await client.rpc("sexytw_create_only_capability");
+      if(capabilityError || capability!==1) return NextResponse.json({error:"Create-only database migration unavailable"},{status:503,headers});
+    }
     const { error: cleanupError } = recovery ? { error: null } : await client.rpc("sexytw_media_cleanup_batch");
     if (cleanupError) return NextResponse.json({ error: "Sync maintenance database setup incomplete" }, { status: 503, headers });
     return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, target: syncTarget }, { headers });
@@ -351,7 +363,10 @@ export async function POST(request: Request) {
     if (!city) { result.skipped += 1; continue; }
     try {
       const current = existingByKey.get(profile.sourceKey);
-      if (body.createOnly && current) { result.skipped += 1; continue; }
+      if (body.createOnly && current) {
+        if(current.source_content_hash?.startsWith("create-only:")) result.errors.push({sourceKey:profile.sourceKey,message:"incomplete-new-draft-requires-review"});
+        result.skipped += 1; continue;
+      }
       const reviewStatus = profile.verifiedAdult
         ? "verified"
         : current?.adult_review_status === "verified" || current?.adult_review_status === "rejected"
@@ -399,7 +414,7 @@ export async function POST(request: Request) {
         adult_verified_by: current?.adult_verified_by || null,
       };
       const save = current
-        ? await supabase.from("profiles").update(payload).eq("id", current.id).select("id").single()
+        ? await supabase.from("profiles").update(payload).eq("id", current.id).select("id,updated_at").single()
         : await supabase.from("profiles").insert(payload).select("id,updated_at").single();
       if (save.error) throw save.error;
       const profileId = save.data.id;

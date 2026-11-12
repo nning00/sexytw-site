@@ -41,3 +41,10 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sexytw_complete_new_profile(uuid,text,timestamptz,uuid,jsonb,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sexytw_complete_new_profile(uuid,text,timestamptz,uuid,jsonb,text,text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.sexytw_create_only_capability()
+RETURNS integer LANGUAGE sql STABLE SECURITY INVOKER SET search_path='' AS $$
+ SELECT CASE WHEN to_regprocedure('public.sexytw_complete_new_profile(uuid,text,timestamp with time zone,uuid,jsonb,text,text)') IS NOT NULL THEN 1 ELSE 0 END
+$$;
+REVOKE ALL ON FUNCTION public.sexytw_create_only_capability() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sexytw_create_only_capability() TO service_role;
