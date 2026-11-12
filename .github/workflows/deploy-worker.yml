@@ -19,7 +19,8 @@ jobs:
 
   deploy:
     needs: validate
-    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/main'
+    # RELEASE HOLD: keep disabled until rollback and failure-stop are independently verified.
+    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/main' && false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -49,6 +50,13 @@ jobs:
             assert.equal(config.vars.NEXT_PUBLIC_SUPABASE_URL, "https://lsxrpubpbnshlqnnddgu.supabase.co");
             assert.notEqual(process.env.SEXYTW_CI_FIXTURE_BUILD, "1");
           '
+      - name: Refuse stale main commits before deployment
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          current_main="$(git ls-remote https://github.com/nning00/sexytw-site.git refs/heads/main | cut -f1)"
+          test -n "$current_main"
+          test "$current_main" = "$EXPECTED_SHA"
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
