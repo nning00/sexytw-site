@@ -1,5 +1,6 @@
 import handler from "vinext/server/fetch-handler";
 import { getOriginalFetch } from "vinext/shims/fetch-cache";
+import { applyArticleCanonical } from "../lib/article-canonical.mjs";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
 import { withPublicReadScope } from "../lib/public-read-scope.mjs";
 
@@ -47,6 +48,7 @@ const worker = {
     }
     securedResponse.headers.set("X-Content-Type-Options", "nosniff");
     securedResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    applyArticleCanonical(request, requestUrl, securedResponse);
     return securedResponse;
   },
 };
