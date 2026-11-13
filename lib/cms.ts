@@ -56,7 +56,7 @@ async function getPublishedProfilesUncached() {
   for (let start = 0; ; start += pageSize) {
     const { data, error } = await supabase.from("profiles")
       .select("id,slug,updated_at")
-      .eq("status", "published")
+      .eq("status", "published").is("source_missing_at", null)
       .order("sort_order")
       .order("created_at", { ascending: false })
       .range(start, start + pageSize - 1);
@@ -75,7 +75,7 @@ async function getPublishedProfilesForCityUncached(regionSlug: string, citySlug:
   if (!city) return [] as CmsProfile[];
   const { data, error } = await supabase.from("profile_cities")
     .select("profiles!inner(id,slug,display_name,style,interest,introduction,card_image_path,seo_title,seo_description,updated_at,sort_order,status)")
-    .eq("city_id", city.id).eq("profiles.status", "published");
+    .eq("city_id", city.id).eq("profiles.status", "published").is("profiles.source_missing_at", null);
   if (error) return [] as CmsProfile[];
   return (data ?? []).map((row) => row.profiles as unknown as CmsProfile)
     .sort((a, b) => ((a as CmsProfile & { sort_order?: number }).sort_order ?? 0) - ((b as CmsProfile & { sort_order?: number }).sort_order ?? 0));
@@ -92,7 +92,7 @@ async function getPublishedProfilePageForCityUncached(regionSlug: string, citySl
   const { data, error, count } = await supabase.from("profile_cities")
     .select("profiles!inner(id,slug,display_name,style,interest,introduction,card_image_path,seo_title,seo_description,updated_at,sort_order,status)", { count: "exact" })
     .eq("city_id", city.id)
-    .eq("profiles.status", "published")
+    .eq("profiles.status", "published").is("profiles.source_missing_at", null)
     .order("sort_order", { referencedTable: "profiles" })
     .range(safeOffset, safeOffset + safeLimit - 1);
   if (error) return { profiles: [] as CmsProfile[], total: 0 };
@@ -104,7 +104,7 @@ async function getPublishedProfileUncached(slug: string) {
   const supabase = createPublicClient();
   const { data, error } = await supabase.from("profiles")
     .select("id,slug,display_name,style,interest,introduction,card_image_path,seo_title,seo_description,updated_at,profile_images(storage_path,alt_text,sort_order)")
-    .eq("slug", slug).eq("status", "published").maybeSingle();
+    .eq("slug", slug).eq("status", "published").is("source_missing_at", null).maybeSingle();
   if (error || !data) return null;
   const profile = data as CmsProfile;
   profile.profile_images = [...(profile.profile_images ?? [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -119,7 +119,7 @@ async function getRelatedProfilesUncached(profileId: string, limit = 8) {
   if (assignmentError || !cityIds.length) return [] as CmsProfile[];
   const { data, error } = await supabase.from("profile_cities")
     .select("profiles!inner(id,slug,display_name,style,interest,introduction,card_image_path,seo_title,seo_description,updated_at,sort_order,status)")
-    .in("city_id", cityIds).neq("profile_id", profileId).eq("profiles.status", "published")
+    .in("city_id", cityIds).neq("profile_id", profileId).eq("profiles.status", "published").is("profiles.source_missing_at", null)
     .limit(Math.max(limit * 2, limit));
   if (error) return [] as CmsProfile[];
   const unique = new Map<string, CmsProfile>();
