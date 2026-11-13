@@ -35,9 +35,12 @@ jobs:
   validate:
     needs: identity
     uses: ./.github/workflows/recovery-checks.yml
+  presence-validate:
+    needs: identity
+    uses: ./.github/workflows/presence-v3-review.yml
   release:
     # Official same-version rollback verified in run 43362433649; sync stays disabled.
-    needs: [identity, validate]
+    needs: [identity, validate, presence-validate]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -1,3 +1,4 @@
+import { isProfileVisibilityPath, applyProfileNoStore } from "../lib/profile-visibility-cache.mjs";
 import handler from "vinext/server/fetch-handler";
 import { getOriginalFetch } from "vinext/shims/fetch-cache";
 import { applyArticleCanonical } from "../lib/article-canonical.mjs";
@@ -34,7 +35,8 @@ const worker = {
     }
 
     const publicHome = request.method === "GET" && requestUrl.pathname === "/";
-    const rendered = publicHome
+    const visibilityPath = isProfileVisibilityPath(requestUrl.pathname);
+    const rendered = (publicHome || visibilityPath)
       ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
       : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
     const response = rendered.response;
@@ -49,6 +51,7 @@ const worker = {
     securedResponse.headers.set("X-Content-Type-Options", "nosniff");
     securedResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     applyArticleCanonical(request, requestUrl, securedResponse);
+    if (visibilityPath) applyProfileNoStore(securedResponse);
     return securedResponse;
   },
 };

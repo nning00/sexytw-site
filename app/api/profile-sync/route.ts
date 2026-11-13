@@ -7,6 +7,8 @@ import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs";
 import { changedFields, finalizeSnapshot } from "@/lib/profile-sync-snapshot.mjs";
 
+import { reconcilePresence } from "@/lib/profile-presence-v3.mjs";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -41,13 +43,14 @@ type SourceProfile = {
 };
 
 type SyncBody = {
+  presenceSnapshot?: boolean;
   mode?: "preview" | "commit";
   capturedAt?: string;
   deferRevalidation?: boolean;
   finalizeSnapshot?: boolean;
   createOnly?: boolean;
   snapshotSourceKeys?: string[];
-  snapshotProof?: { complete: boolean; sourceTotal: number; sourcePages: number; pagesFetched: number; rawCount: number };
+  snapshotProof?: { complete: boolean; sourceTotal: number; sourcePages: number; pagesFetched: number; rawCount: number; importErrors?: number; importWarnings?: number };
   cleanupCursor?: string | null;
   profiles?: SourceProfile[];
 };
@@ -283,6 +286,21 @@ export async function POST(request: Request) {
     || (body.finalizeSnapshot && snapshotSourceKeys.length === 0)) {
     return NextResponse.json({ error: "Invalid sync payload" }, { status: 400 });
   }
+  if (body.presenceSnapshot) {
+    if (process.env.PROFILE_LIFECYCLE_V3 !== "1" || body.mode !== "commit" || body.profiles.length || body.finalizeSnapshot)
+      return NextResponse.json({error:"Presence lifecycle not enabled or invalid payload"},{status:409});
+    try {
+      const presence = await reconcilePresence(createAdminClient(),body);
+      revalidateTag("profiles", { expire: 0 });
+      revalidateTag("regions", { expire: 0 });
+      revalidatePath("/", "layout");
+      revalidatePath("/sitemap.xml");
+      return NextResponse.json({ok:true,presence},{headers:{"Cache-Control":"private, no-store"}});
+    } catch (error) { return NextResponse.json({ok:false,error:syncErrorMessage(error)},{status:409}); }
+  }
+  // Never expose the old permanent-delete entrypoint, even to older clients.
+  if (body.finalizeSnapshot) return NextResponse.json({error:"Legacy cleanup disabled"},{status:409});
+  if (body.mode === "commit" && !body.createOnly) return NextResponse.json({error:"Existing profile writes require separately reviewed integration"},{status:409});
   if (body.createOnly && body.finalizeSnapshot) return NextResponse.json({ error: "Create-only refuses cleanup" }, {status:400});
   const mode = body.mode === "commit" ? "commit" : "preview";
   const capturedAt = body.capturedAt && !Number.isNaN(Date.parse(body.capturedAt)) ? body.capturedAt : new Date().toISOString();
