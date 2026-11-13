@@ -264,9 +264,17 @@ export async function GET(request: Request) {
       const {data: capability,error: capabilityError} = await client.rpc("sexytw_create_only_capability");
       if(capabilityError || capability!==1) return NextResponse.json({error:"Create-only database migration unavailable"},{status:503,headers});
     }
+    let presenceVersion = 0;
+    let presenceSchemaReady = false;
+    if (recovery && process.env.PROFILE_LIFECYCLE_V3 === "1") {
+      const { error: columnError } = await client.from("profiles").select("source_missing_at").limit(1);
+      const { error: reviewError } = await client.rpc("sexytw_pending_removal_review").limit(1);
+      presenceSchemaReady = !columnError && !reviewError;
+      presenceVersion = presenceSchemaReady ? 3 : 0;
+    }
     const { error: cleanupError } = recovery ? { error: null } : await client.rpc("sexytw_media_cleanup_batch");
     if (cleanupError) return NextResponse.json({ error: "Sync maintenance database setup incomplete" }, { status: 503, headers });
-    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, target: syncTarget }, { headers });
+    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, presenceVersion, presenceSchemaReady, target: syncTarget }, { headers });
   } catch {
     return NextResponse.json({ error: "Sync target verification failed" }, { status: 503, headers });
   }

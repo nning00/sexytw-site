@@ -1,6 +1,7 @@
 // Real adapter for GitHub Actions only. Never run this for local validation.
 import {execFileSync} from 'node:child_process';import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {controlledRelease,releaseIdentity,previousReleaseGate,soleVersion} from '../lib/release-gate.mjs';
+import {assertPresenceCapability} from '../lib/presence-capability.mjs';
 const e=process.env;const repo='nning00/sexytw-site',config='wrangler.jsonc';
 releaseIdentity({event:e.GITHUB_EVENT_NAME,ref:e.GITHUB_REF,sha:e.GITHUB_SHA,expectedSha:e.EXPECTED_SHA,runAttempt:e.GITHUB_RUN_ATTEMPT});
 if(e.GITHUB_ACTIONS!=='true'||e.GITHUB_REPOSITORY!==repo||e.CLOUDFLARE_ACCOUNT_ID!=='f9f173ed7748397ad18c0df63220fc3f')throw Error('WRONG_RELEASE_TARGET');
@@ -26,6 +27,6 @@ await controlledRelease({
  async upload(){wr('versions','upload','--tag',tag,'--message','controlled create-only '+e.GITHUB_SHA,'--keep-vars');const v=JSON.parse(wr('versions','list','--json')).filter(x=>x.annotations?.['workers/tag']===tag);if(v.length!==1)throw Error('UPLOAD_ID_NOT_UNIQUE');return v[0].id;},
  async assertMainUnchanged(){if(baselineDeployment!==e.EXPECTED_PREVIOUS_DEPLOYMENT)throw Error('BASELINE_DEPLOYMENT_DRIFT');const main=await gh('git/ref/heads/main');if(main.object.sha!==e.GITHUB_SHA)throw Error('MAIN_MOVED');},
  async activate(id){wr('versions','deploy',id+'@100','--yes','--message','controlled '+e.GITHUB_SHA);},
- async newHealth(){await oldHealth();const r=await fetch('https://sexytw.cc/api/profile-sync',{headers:{Authorization:'Bearer '+e.PROFILE_SYNC_SECRET,'X-Sync-Recovery':'create-only-v1'},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('NEW_PREFLIGHT_HTTP_'+r.status);const j=await r.json();if(j.ok!==true||j.createOnlyVersion!==1||j.databaseReachable!==true||j.target?.siteUrl!=='https://sexytw.cc'||j.target?.supabaseUrl!=='https://lsxrpubpbnshlqnnddgu.supabase.co')throw Error('NEW_PREFLIGHT_CAPABILITY');},
+ async newHealth(){await oldHealth();const r=await fetch('https://sexytw.cc/api/profile-sync',{headers:{Authorization:'Bearer '+e.PROFILE_SYNC_SECRET,'X-Sync-Recovery':'create-only-v1'},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('NEW_PREFLIGHT_HTTP_'+r.status);const j=await r.json();if(j.ok!==true||j.createOnlyVersion!==1||j.databaseReachable!==true||j.target?.siteUrl!=='https://sexytw.cc'||j.target?.supabaseUrl!=='https://lsxrpubpbnshlqnnddgu.supabase.co')throw Error('NEW_PREFLIGHT_CAPABILITY');assertPresenceCapability(j,JSON.parse(readFileSync(config,'utf8')).vars?.PROFILE_LIFECYCLE_V3==='1');},
  async rollback(id){wr('rollback',id,'--yes','--message','rollback failed controlled release '+e.GITHUB_SHA);}
 });
