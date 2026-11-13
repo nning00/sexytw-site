@@ -10,6 +10,10 @@ on:
         description: Exact verified current 100 percent Cloudflare version
         required: true
         type: string
+      expected_previous_deployment:
+        description: Exact verified current Cloudflare deployment ID
+        required: true
+        type: string
 permissions:
   contents: read
   actions: read
@@ -32,8 +36,7 @@ jobs:
     needs: identity
     uses: ./.github/workflows/recovery-checks.yml
   release:
-    # RELEASE HOLD: do not remove until reviewed, authorized and provider rollback verified.
-    if: false
+    # Official same-version rollback verified in run 43362433649; sync stays disabled.
     needs: [identity, validate]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -56,6 +59,8 @@ jobs:
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           EXPECTED_PREVIOUS_VERSION: ${{ inputs.expected_previous_version }}
+          EXPECTED_PREVIOUS_DEPLOYMENT: ${{ inputs.expected_previous_deployment }}
+          CI: 'true'
           GH_TOKEN: ${{ github.token }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
