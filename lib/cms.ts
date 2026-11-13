@@ -50,7 +50,7 @@ export function profileCardPath(profile: Pick<CmsProfile, "card_image_path" | "p
 }
 
 async function getPublishedProfilesUncached() {
-  const supabase = createPublicClient();
+  const supabase = createPublicClient({ noStore: true });
   const profiles: CmsProfileIndex[] = [];
   const pageSize = 1000;
   for (let start = 0; ; start += pageSize) {
@@ -68,7 +68,7 @@ async function getPublishedProfilesUncached() {
 }
 
 async function getPublishedProfilesForCityUncached(regionSlug: string, citySlug: string) {
-  const supabase = createPublicClient();
+  const supabase = createPublicClient({ noStore: true });
   const { data: region } = await supabase.from("regions").select("id").eq("slug", regionSlug).eq("published", true).maybeSingle();
   if (!region) return [] as CmsProfile[];
   const { data: city } = await supabase.from("cities").select("id").eq("region_id", region.id).eq("slug", citySlug).eq("published", true).maybeSingle();
@@ -82,7 +82,7 @@ async function getPublishedProfilesForCityUncached(regionSlug: string, citySlug:
 }
 
 async function getPublishedProfilePageForCityUncached(regionSlug: string, citySlug: string, offset = 0, limit = 24) {
-  const supabase = createPublicClient();
+  const supabase = createPublicClient({ noStore: true });
   const safeOffset = Math.max(0, Math.floor(offset));
   const safeLimit = Math.min(48, Math.max(1, Math.floor(limit)));
   const { data: region } = await supabase.from("regions").select("id").eq("slug", regionSlug).eq("published", true).maybeSingle();
@@ -101,7 +101,7 @@ async function getPublishedProfilePageForCityUncached(regionSlug: string, citySl
 }
 
 async function getPublishedProfileUncached(slug: string) {
-  const supabase = createPublicClient();
+  const supabase = createPublicClient({ noStore: true });
   const { data, error } = await supabase.from("profiles")
     .select("id,slug,display_name,style,interest,introduction,card_image_path,seo_title,seo_description,updated_at,profile_images(storage_path,alt_text,sort_order)")
     .eq("slug", slug).eq("status", "published").is("source_missing_at", null).maybeSingle();
@@ -112,7 +112,7 @@ async function getPublishedProfileUncached(slug: string) {
 }
 
 async function getRelatedProfilesUncached(profileId: string, limit = 8) {
-  const supabase = createPublicClient();
+  const supabase = createPublicClient({ noStore: true });
   const { data: assignments, error: assignmentError } = await supabase.from("profile_cities")
     .select("city_id").eq("profile_id", profileId);
   const cityIds = [...new Set((assignments ?? []).map((item) => item.city_id))];
@@ -256,11 +256,11 @@ const getPublicSettingsBundle = () => publicReadOnce("cms_settings", cachedPubli
 const cachedHomeArticleCards = unstable_cache(async () => queryHomeArticleCards(createPublicClient()) as Promise<ArticleCard[]>, ["home-article-cards-v1"], { ...cacheOptions, tags: ["articles"] });
 export const getHomeArticleCards = () => publicReadOnce("cms_home_articles", cachedHomeArticleCards) as Promise<ArticleCard[]>;
 
-export const getPublishedProfiles = unstable_cache(getPublishedProfilesUncached, ["published-profiles"], { ...cacheOptions, tags: ["profiles"] });
-export const getPublishedProfilesForCity = unstable_cache(getPublishedProfilesForCityUncached, ["published-profiles-city"], { ...cacheOptions, tags: ["profiles", "regions"] });
-export const getPublishedProfilePageForCity = unstable_cache(getPublishedProfilePageForCityUncached, ["published-profile-page-city"], { ...cacheOptions, tags: ["profiles", "regions"] });
-export const getPublishedProfile = unstable_cache(getPublishedProfileUncached, ["published-profile"], { ...cacheOptions, tags: ["profiles"] });
-export const getRelatedProfiles = unstable_cache(getRelatedProfilesUncached, ["related-profiles"], { ...cacheOptions, tags: ["profiles", "regions"] });
+export const getPublishedProfiles = (...args: Parameters<typeof getPublishedProfilesUncached>) => publicReadOnce("profiles:getPublishedProfiles:" + JSON.stringify(args), () => getPublishedProfilesUncached(...args)) as ReturnType<typeof getPublishedProfilesUncached>;
+export const getPublishedProfilesForCity = (...args: Parameters<typeof getPublishedProfilesForCityUncached>) => publicReadOnce("profiles:getPublishedProfilesForCity:" + JSON.stringify(args), () => getPublishedProfilesForCityUncached(...args)) as ReturnType<typeof getPublishedProfilesForCityUncached>;
+export const getPublishedProfilePageForCity = (...args: Parameters<typeof getPublishedProfilePageForCityUncached>) => publicReadOnce("profiles:getPublishedProfilePageForCity:" + JSON.stringify(args), () => getPublishedProfilePageForCityUncached(...args)) as ReturnType<typeof getPublishedProfilePageForCityUncached>;
+export const getPublishedProfile = (...args: Parameters<typeof getPublishedProfileUncached>) => publicReadOnce("profiles:getPublishedProfile:" + JSON.stringify(args), () => getPublishedProfileUncached(...args)) as ReturnType<typeof getPublishedProfileUncached>;
+export const getRelatedProfiles = (...args: Parameters<typeof getRelatedProfilesUncached>) => publicReadOnce("profiles:getRelatedProfiles:" + JSON.stringify(args), () => getRelatedProfilesUncached(...args)) as ReturnType<typeof getRelatedProfilesUncached>;
 export const getPublishedArticles = unstable_cache(getPublishedArticlesUncached, ["published-articles"], { ...cacheOptions, tags: ["articles"] });
 const cachedPublicNavigation = unstable_cache(getPublicNavigationUncached, ["public-navigation"], { ...cacheOptions, tags: ["regions", "articles"] });
 export const getPublicNavigation = () => publicReadOnce("cms_navigation", cachedPublicNavigation) as ReturnType<typeof cachedPublicNavigation>;

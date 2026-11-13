@@ -34,6 +34,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node --check scripts/edc-profile-sync.mjs
       - run: node --test scripts/*.test.mjs
+      - run: node tests/presence-visibility-local.mjs
       - run: pnpm exec tsc --noEmit
       - name: Atomic new-profile completion integration (synthetic only)
         run: node --test tests/recovery-completion.integration.mjs

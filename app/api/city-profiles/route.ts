@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPublishedProfilePageForCity, mediaUrl, profileCardPath } from "@/lib/cms";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
 export async function GET(request: NextRequest) {
@@ -23,6 +25,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(
     { profiles, total: page.total },
-    { headers: { "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" } },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } },
   );
 }

@@ -1,5 +1,6 @@
 name: Presence v3 isolated review (no deployment)
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     paths:

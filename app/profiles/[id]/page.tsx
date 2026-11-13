@@ -17,7 +17,8 @@ import { completeOpenGraph } from "@/lib/seo-metadata";
 import JsonLd from "@/components/JsonLd";
 import { absoluteUrl, breadcrumbStructuredData, imageStructuredData } from "@/lib/structured-data";
 
-export const revalidate = 300;
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 export function generateStaticParams() { return profileExamples.map((profile) => ({ id: profile.id })); }
 

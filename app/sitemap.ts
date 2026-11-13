@@ -11,7 +11,8 @@ const siteUrl = (
     ? configuredSiteUrl
     : "https://sexytw.cc"
 ).replace(/\/$/, "");
-export const revalidate = 3600;
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 function validDate(value: string | null | undefined) {
   if (!value) return undefined;

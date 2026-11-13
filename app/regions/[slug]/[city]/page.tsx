@@ -16,7 +16,8 @@ import CityProfileGrid, { type CityProfileCard } from "@/components/CityProfileG
 import DetailHeaderActions from "@/components/DetailHeaderActions";
 
 const withCity = (text: string, city: string) => text.replace(/\{city\}/g, city);
-export const revalidate = 300;
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 // Public city pages use ISR so crawlers and visitors can reuse the rendered
 // response instead of making the Worker rebuild every page on every request.
 // Admin saves and profile syncs explicitly invalidate the related cache tags.
