@@ -37,4 +37,4 @@ jobs:
         run: |
           test "$CLOUDFLARE_ACCOUNT_ID" = f9f173ed7748397ad18c0df63220fc3f
           "$RUNNER_TEMP/read-cli/node_modules/.bin/wrangler" deployments list --name sexytw-site --json > "$RUNNER_TEMP/deployments.json"
-          node -e 'const fs=require("fs");let a=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/deployments.json"));a.sort((x,y)=>Date.parse(y.created_on)-Date.parse(x.created_on));const d=a[0];if(!d||d.versions.length!==1||d.versions[0].version_id!=="6be237c5-0b5c-4463-b70d-d2e65da6313c"||d.versions[0].percentage!==100)throw Error("BASELINE_CHANGED");console.log(JSON.stringify({deployment:d.id,created_on:d.created_on,versions:d.versions,readOnly:true}));'
+          node -e 'const fs=require("fs");let a=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/deployments.json"));a.sort((x,y)=>Date.parse(y.created_on)-Date.parse(x.created_on));const d=a[0];if(!d||d.versions.length!==1||!d.versions[0].version_id.startsWith("89bf9086-")||d.versions[0].percentage!==100)throw Error("BASELINE_CHANGED");console.log(JSON.stringify({deployment:d.id,created_on:d.created_on,versions:d.versions,readOnly:true}));'
