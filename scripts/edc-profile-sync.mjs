@@ -4,6 +4,7 @@ import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target
 import { collectCatalog } from "../lib/edc-catalog.mjs";
 import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
 import { recoveryMode, syncBatchPayload, shouldFinalize } from "../lib/profile-sync-recovery.mjs";
+import { assertPresenceCapability } from "../lib/presence-capability.mjs";
 const presenceV3 = process.argv.includes("--presence-v3");
 const upsertOnly = recoveryMode(process.argv) || presenceV3;
 
@@ -178,7 +179,8 @@ loadLocalEnv();
 const commit = process.argv.includes("--commit");
 const verifyOnly = process.argv.includes("--verify-only");
 if (commit || verifyOnly || process.env.PROFILE_SYNC_ENDPOINT || process.env.PROFILE_SYNC_SECRET) {
-  await verifySyncTarget(process.env.PROFILE_SYNC_ENDPOINT, process.env.PROFILE_SYNC_SECRET);
+  const verifiedTarget = await verifySyncTarget(process.env.PROFILE_SYNC_ENDPOINT, process.env.PROFILE_SYNC_SECRET);
+  assertPresenceCapability(verifiedTarget, presenceV3);
   console.log("Sync target verified: sexytw.cc / lsxrpubpbnshlqnnddgu / public / sexytw (read-only preflight).");
 }
 if (verifyOnly) {
