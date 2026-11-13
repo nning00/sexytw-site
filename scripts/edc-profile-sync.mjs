@@ -4,7 +4,8 @@ import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target
 import { collectCatalog } from "../lib/edc-catalog.mjs";
 import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
 import { recoveryMode, syncBatchPayload, shouldFinalize } from "../lib/profile-sync-recovery.mjs";
-const upsertOnly = recoveryMode(process.argv);
+const presenceV3 = process.argv.includes("--presence-v3");
+const upsertOnly = recoveryMode(process.argv) || presenceV3;
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const localEnvPaths = [join(projectRoot, ".env.sync.local"), join(projectRoot, ".env.local")];
@@ -216,7 +217,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         response = await postPayload(syncBatchPayload({commit,capturedAt,profiles:chunk,upsertOnly}));
-        if (!response || !response.summary || !response.result && commit) throw new Error("Invalid sync batch response.");
+        if (!response || response.ok !== true || !response.summary || typeof response.summary !== "object" || Array.isArray(response.summary) || (commit && (!response.result || typeof response.result !== "object" || !Array.isArray(response.result.errors)))) throw new Error("Invalid or unsuccessful sync batch response.");
         const attemptErrors = response?.result?.errors || [];
         const blockingErrors = attemptErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
         if (!blockingErrors.length) { succeeded = true; break; }
@@ -227,7 +228,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
       }
       if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
     }
-    if (!response || (!succeeded && !upsertOnly)) {
+    if (!response || !succeeded) {
       console.error(`批次 ${index + 1}/${chunks.length} 已略過並繼續後續資料：${terminalHttpError}`);
       return { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: chunk.length };
     }
@@ -262,6 +263,13 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
+  if (presenceV3 && commit && !selectedCity && limit === 0 && totals.errors === 0 && totals.warnings === 0) {
+    const response = await postPayload({mode:"commit",profiles:[],presenceSnapshot:true,capturedAt,
+      snapshotSourceKeys:catalogue.sourceKeys,
+      snapshotProof:{...catalogue.snapshotProof,importErrors:totals.errors,importWarnings:totals.warnings}});
+    if (response?.ok !== true || response?.presence?.complete !== true) throw new Error("Presence reconciliation incomplete");
+    console.log("Presence reconciliation: " + JSON.stringify(response.presence));
+  }
   if (shouldFinalize({commit,selectedCity,limit,errors:totals.errors,warnings:totals.warnings,upsertOnly})) {
     const cleanupTotals = await finishSnapshot(postPayload,
       { mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: catalogue.sourceKeys, snapshotProof: catalogue.snapshotProof },
@@ -269,7 +277,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
         onPage: (pass, page) => console.log(`Cleanup pass ${pass}: ${JSON.stringify(page)}`) });
     console.log(`Cleanup totals: ${JSON.stringify(cleanupTotals)}`);
   }
-  if (upsertOnly) console.log("RECOVERY CREATE-ONLY: no absence deletion, no finalizer/media queue; three-day lifecycle NOT enabled.");
+  if (upsertOnly && !presenceV3) console.log("RECOVERY CREATE-ONLY: no absence deletion, no finalizer/media queue; three-day lifecycle NOT enabled.");
   console.log(JSON.stringify(totals, null, 2));
   if (totals.errors) throw new Error(`同步完成但有 ${totals.errors} 筆錯誤；已保留既有資料並略過刪除，下次排程會重試。`);
   if (totals.warnings) throw new Error("Source image warnings were present; permanent cleanup was skipped for safety.");
