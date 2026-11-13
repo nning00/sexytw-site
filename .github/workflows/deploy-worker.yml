@@ -1,36 +1,40 @@
-name: Deploy sexytw.cc Worker
-
+name: Read-only sexytw release baseline
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
-
+    inputs:
+      expected_sha:
+        required: true
+        type: string
 permissions:
   contents: read
-
+concurrency:
+  group: sexytw-production-deploy
+  cancel-in-progress: false
 jobs:
-  deploy:
-    if: github.repository == 'nning00/sexytw-site' && false # RELEASE HOLD: migration + independent checks + verified controlled rollback required
+  inspect:
+    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/review/sexytw-readonly-baseline-20261113' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: node --test scripts/json-payload.test.mjs scripts/home-performance.test.mjs scripts/profile-sync-target.test.mjs scripts/profile-sync-dispatch.test.mjs scripts/profile-sync-snapshot.test.mjs
-      - run: pnpm exec tsc --noEmit
-      - run: pnpm build
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.jsonc
-      - name: Verify dedicated sync target without writing profiles
+          node-version: '22'
+      - name: Validate exact identity
         env:
-          PROFILE_SYNC_ENDPOINT: https://sexytw.cc/api/profile-sync
-          PROFILE_SYNC_SECRET: ${{ secrets.PROFILE_SYNC_SECRET }}
-        run: node scripts/edc-profile-sync.mjs --verify-only
+          EXPECTED: ${{ inputs.expected_sha }}
+        run: test "$GITHUB_SHA" = "$EXPECTED"
+      - run: npm install --prefix "$RUNNER_TEMP/read-cli" --ignore-scripts --no-audit --no-fund wrangler@4.92.0
+      - name: Read current deployment only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CI: 'true'
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          test "$CLOUDFLARE_ACCOUNT_ID" = f9f173ed7748397ad18c0df63220fc3f
+          "$RUNNER_TEMP/read-cli/node_modules/.bin/wrangler" deployments list --name sexytw-site --json > "$RUNNER_TEMP/deployments.json"
+          node -e 'const fs=require("fs");let a=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/deployments.json"));a.sort((x,y)=>Date.parse(y.created_on)-Date.parse(x.created_on));const d=a[0];if(!d||d.versions.length!==1||d.versions[0].version_id!=="6be237c5-0b5c-4463-b70d-d2e65da6313c"||d.versions[0].percentage!==100)throw Error("BASELINE_CHANGED");console.log(JSON.stringify({deployment:d.id,created_on:d.created_on,versions:d.versions,readOnly:true}));'
