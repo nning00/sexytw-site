@@ -1,36 +1,51 @@
-name: Deploy sexytw.cc Worker
-
+name: One-time sexytw same-version rollback verification
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
-
+    inputs:
+      expected_sha:
+        description: Exact reviewed branch commit SHA
+        required: true
+        type: string
 permissions:
   contents: read
-
+  actions: read
+concurrency:
+  group: sexytw-production-deploy
+  cancel-in-progress: false
 jobs:
-  deploy:
-    if: github.repository == 'nning00/sexytw-site'
+  verify:
+    if: github.repository == 'nning00/sexytw-site' && github.ref == 'refs/heads/codex/sexytw-same-version-check-20261113' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-      - run: node --test scripts/json-payload.test.mjs scripts/home-performance.test.mjs scripts/profile-sync-target.test.mjs scripts/profile-sync-dispatch.test.mjs scripts/profile-sync-snapshot.test.mjs
-      - run: pnpm exec tsc --noEmit
-      - run: pnpm build
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.jsonc
-      - name: Verify dedicated sync target without writing profiles
+          node-version: '22'
+      - name: Validate exact identity without secrets
         env:
-          PROFILE_SYNC_ENDPOINT: https://sexytw.cc/api/profile-sync
-          PROFILE_SYNC_SECRET: ${{ secrets.PROFILE_SYNC_SECRET }}
-        run: node scripts/edc-profile-sync.mjs --verify-only
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$GITHUB_SHA" = "$EXPECTED_SHA"
+          node --check scripts/same-version-verification.mjs
+      - name: Install pinned official Wrangler separately
+        run: npm install --prefix "$RUNNER_TEMP/rollback-cli" --ignore-scripts --no-audit --no-fund wrangler@4.92.0
+      - name: One same-version rollback and health verification
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CI: 'true'
+        run: |
+          export WRANGLER_BIN="$RUNNER_TEMP/rollback-cli/node_modules/.bin/wrangler"
+          node scripts/same-version-verification.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: same-version-evidence
+          path: same-version-evidence.json
+          if-no-files-found: warn
