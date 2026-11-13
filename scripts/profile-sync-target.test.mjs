@@ -39,7 +39,7 @@ test("preflight is authenticated, read-only, noncached and refuses redirects", a
     assert.equal(options.cache, "no-store");
     assert.equal(options.headers.Authorization, "Bearer test-only");
     assert.equal(options.body, undefined);
-    return Response.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, target: syncTarget });
+    return Response.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, target: syncTarget });
   });
 });
 

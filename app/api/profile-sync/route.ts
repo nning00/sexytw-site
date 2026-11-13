@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -45,6 +45,7 @@ type SyncBody = {
   capturedAt?: string;
   deferRevalidation?: boolean;
   finalizeSnapshot?: boolean;
+  createOnly?: boolean;
   snapshotSourceKeys?: string[];
   snapshotProof?: { complete: boolean; sourceTotal: number; sourcePages: number; pagesFetched: number; rawCount: number };
   cleanupCursor?: string | null;
@@ -162,16 +163,18 @@ async function downloadImage(url: string) {
   return { bytes, contentType, extension: fileExtension(contentType, url) };
 }
 
-async function syncImages(profileId: string, displayName: string, images: SourceImage[]) {
+async function syncImages(profileId: string, displayName: string, images: SourceImage[], createOnly = false) {
   const supabase = createAdminClient();
   const { data: trackedRows, error: trackedError } = await supabase
     .from("profile_source_images")
     .select("source_url,storage_path")
     .eq("profile_id", profileId);
   if (trackedError) throw trackedError;
+  if (createOnly && trackedRows?.length) throw new Error("Create-only refuses existing image mappings");
   const previousStoragePaths = (trackedRows ?? []).map((row) => row.storage_path);
   const tracked = new Map((trackedRows ?? []).map((row) => [row.source_url, row.storage_path]));
   const desired = new Set(images.map((image) => image.url));
+  const insertedProof: Array<{storage_path:string;source_url:string;alt_text:string;sort_order:number}> = [];
 
   const removed = (trackedRows ?? []).filter((row) => !desired.has(row.source_url));
   if (removed.length) {
@@ -192,22 +195,32 @@ async function syncImages(profileId: string, displayName: string, images: Source
       const imageHash = createHash("sha256").update(image.url).digest("hex").slice(0, 24);
       storagePath = scopedMediaPath(`profiles/synced/${profileId}/${imageHash}.${downloaded.extension}`);
       const { error: uploadError } = await supabase.storage.from("site-media").upload(storagePath, downloaded.bytes, {
-        upsert: true,
+        upsert: !createOnly,
         contentType: downloaded.contentType,
         cacheControl: "31536000",
       });
       if (uploadError) throw uploadError;
     }
-    const { error: trackError } = await supabase.from("profile_source_images").upsert({
+    const trackPayload = {
       profile_id: profileId,
       source_url: image.url,
       storage_path: storagePath,
       alt_text: image.alt || `${displayName}形象照片 ${index + 1}`,
       sort_order: index + 1,
-    });
+    };
+    const { error: trackError } = createOnly
+      ? await supabase.from("profile_source_images").insert(trackPayload)
+      : await supabase.from("profile_source_images").upsert(trackPayload);
     if (trackError) throw trackError;
+    if(createOnly) insertedProof.push(trackPayload);
   }
 
+  if(createOnly) {
+    if(insertedProof.length !== images.length || !insertedProof.length) throw new Error("New profile requires complete images");
+    const {error: newImagesError} = await supabase.from("profile_images").insert(insertedProof.map(row=>({profile_id:profileId,storage_path:row.storage_path,alt_text:row.alt_text,sort_order:row.sort_order})));
+    if(newImagesError) throw newImagesError;
+    return {coverPath:insertedProof[0].storage_path,proof:insertedProof};
+  }
   const { data: latestTracked, error: latestError } = await supabase
     .from("profile_source_images")
     .select("source_url,storage_path,alt_text,sort_order")
@@ -231,7 +244,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
     })));
     if (imageRowsError) throw imageRowsError;
   }
-  return ordered[0]?.storage_path ?? null;
+  return { coverPath: ordered[0]?.storage_path ?? null, proof: ordered.map(row=>({storage_path:row.storage_path,source_url:row.source_url,alt_text:row.alt_text,sort_order:row.sort_order})) };
 }
 
 export async function GET(request: Request) {
@@ -243,9 +256,14 @@ export async function GET(request: Request) {
     if (!client) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
     const { error } = await client.from("profiles").select("id").limit(1);
     if (error) return NextResponse.json({ error: "Sync database verification failed" }, { status: 503, headers });
-    const { error: cleanupError } = await client.rpc("sexytw_media_cleanup_batch");
+    const recovery = request.headers.get("X-Sync-Recovery") === "create-only-v1";
+    if(recovery) {
+      const {data: capability,error: capabilityError} = await client.rpc("sexytw_create_only_capability");
+      if(capabilityError || capability!==1) return NextResponse.json({error:"Create-only database migration unavailable"},{status:503,headers});
+    }
+    const { error: cleanupError } = recovery ? { error: null } : await client.rpc("sexytw_media_cleanup_batch");
     if (cleanupError) return NextResponse.json({ error: "Sync maintenance database setup incomplete" }, { status: 503, headers });
-    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, target: syncTarget }, { headers });
+    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, target: syncTarget }, { headers });
   } catch {
     return NextResponse.json({ error: "Sync target verification failed" }, { status: 503, headers });
   }
@@ -265,6 +283,7 @@ export async function POST(request: Request) {
     || (body.finalizeSnapshot && snapshotSourceKeys.length === 0)) {
     return NextResponse.json({ error: "Invalid sync payload" }, { status: 400 });
   }
+  if (body.createOnly && body.finalizeSnapshot) return NextResponse.json({ error: "Create-only refuses cleanup" }, {status:400});
   const mode = body.mode === "commit" ? "commit" : "preview";
   const capturedAt = body.capturedAt && !Number.isNaN(Date.parse(body.capturedAt)) ? body.capturedAt : new Date().toISOString();
   const normalizedProfiles = body.profiles.map(normalizeProfile).filter((profile): profile is NonNullable<ReturnType<typeof normalizeProfile>> => Boolean(profile));
@@ -317,7 +336,7 @@ export async function POST(request: Request) {
       : current?.adult_review_status === "verified" || current?.adult_review_status === "rejected"
         ? current.adult_review_status
         : "pending";
-    const action = !city
+    const action = body.createOnly && current ? "skip-existing" : !city
       ? "skip-city"
       : reviewStatus === "rejected"
         ? "rejected"
@@ -344,6 +363,10 @@ export async function POST(request: Request) {
     if (!city) { result.skipped += 1; continue; }
     try {
       const current = existingByKey.get(profile.sourceKey);
+      if (body.createOnly && current) {
+        if(current.source_content_hash?.startsWith("create-only:")) result.errors.push({sourceKey:profile.sourceKey,message:"incomplete-new-draft-requires-review"});
+        result.skipped += 1; continue;
+      }
       const reviewStatus = profile.verifiedAdult
         ? "verified"
         : current?.adult_review_status === "verified" || current?.adult_review_status === "rejected"
@@ -377,31 +400,39 @@ export async function POST(request: Request) {
         style: "",
         interest: "",
         introduction: serializeProfileDetails(profile.details),
-        status: targetStatus,
+        status: body.createOnly ? "draft" : targetStatus,
         sort_order: 99,
         seo_title: seoTitle,
         seo_description: seoDescription,
         source_provider: PROVIDER,
         source_key: profile.sourceKey,
         source_url: profile.sourceUrl,
-        source_content_hash: null,
+        source_content_hash: body.createOnly ? `create-only:${randomUUID()}` : null,
         source_last_seen_at: capturedAt,
         adult_review_status: reviewStatus,
         adult_verified_at: reviewStatus === "verified" ? current?.adult_verified_at || capturedAt : null,
         adult_verified_by: current?.adult_verified_by || null,
       };
       const save = current
-        ? await supabase.from("profiles").update(payload).eq("id", current.id).select("id").single()
-        : await supabase.from("profiles").insert(payload).select("id").single();
+        ? await supabase.from("profiles").update(payload).eq("id", current.id).select("id,updated_at").single()
+        : await supabase.from("profiles").insert(payload).select("id,updated_at").single();
       if (save.error) throw save.error;
       const profileId = save.data.id;
-      const { error: assignmentDeleteError } = await supabase.from("profile_cities").delete().eq("profile_id", profileId);
+      const { error: assignmentDeleteError } = body.createOnly ? {error:null} : await supabase.from("profile_cities").delete().eq("profile_id", profileId);
       if (assignmentDeleteError) throw assignmentDeleteError;
       const { error: assignmentError } = await supabase.from("profile_cities").insert({ profile_id: profileId, city_id: city.id });
       if (assignmentError) throw assignmentError;
-      const coverPath = await syncImages(profileId, profile.displayName, profile.images);
-      const { error: coverError } = await supabase.from("profiles").update({ card_image_path: coverPath, source_content_hash: profile.contentHash }).eq("id", profileId);
-      if (coverError) throw coverError;
+      const {coverPath,proof} = await syncImages(profileId, profile.displayName, profile.images, body.createOnly);
+      if (body.createOnly) {
+        const {error: completeError} = await supabase.rpc("sexytw_complete_new_profile", {
+          p_id:profileId,p_marker:payload.source_content_hash,p_expected_updated_at:save.data.updated_at,
+          p_city_id:city.id,p_images:proof,p_content_hash:profile.contentHash,p_cover_path:coverPath
+        });
+        if(completeError) throw new Error("New draft incomplete or edited; left for review: "+completeError.message);
+      } else {
+        const { error: coverError } = await supabase.from("profiles").update({ card_image_path: coverPath, source_content_hash: profile.contentHash }).eq("id", profileId);
+        if (coverError) throw coverError;
+      }
       if (current) result.updated += 1;
       else result.created += 1;
     } catch (error) {

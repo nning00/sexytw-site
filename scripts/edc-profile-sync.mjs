@@ -3,6 +3,8 @@ import { dirname, join, resolve } from "node:path";
 import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target.mjs";
 import { collectCatalog } from "../lib/edc-catalog.mjs";
 import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
+import { recoveryMode, syncBatchPayload, shouldFinalize } from "../lib/profile-sync-recovery.mjs";
+const upsertOnly = recoveryMode(process.argv);
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const localEnvPaths = [join(projectRoot, ".env.sync.local"), join(projectRoot, ".env.local")];
@@ -210,27 +212,28 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     let response;
     let succeeded = false;
     let terminalHttpError = "";
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const maxAttempts = upsertOnly ? 1 : 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        response = await postPayload({ mode: commit ? "commit" : "preview", capturedAt, deferRevalidation: true, profiles: chunk });
+        response = await postPayload(syncBatchPayload({commit,capturedAt,profiles:chunk,upsertOnly}));
         if (!response || !response.summary || !response.result && commit) throw new Error("Invalid sync batch response.");
         const attemptErrors = response?.result?.errors || [];
-        const blockingErrors = attemptErrors.filter((item) => item?.message !== "image-download-404");
+        const blockingErrors = attemptErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
         if (!blockingErrors.length) { succeeded = true; break; }
         console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次嘗試失敗：${JSON.stringify(blockingErrors)}`);
       } catch (error) {
         terminalHttpError = errorMessage(error);
         console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次 HTTP 嘗試失敗：${terminalHttpError}`);
       }
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+      if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
     }
-    if (!response || !succeeded) {
+    if (!response || (!succeeded && !upsertOnly)) {
       console.error(`批次 ${index + 1}/${chunks.length} 已略過並繼續後續資料：${terminalHttpError}`);
       return { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: chunk.length };
     }
     const responseErrors = response?.result?.errors || [];
-    const warningErrors = responseErrors.filter((item) => item?.message === "image-download-404");
-    const blockingErrors = responseErrors.filter((item) => item?.message !== "image-download-404");
+    const warningErrors = responseErrors.filter((item) => !upsertOnly && item?.message === "image-download-404");
+    const blockingErrors = responseErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
     console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify(response?.summary || response)}`);
     if (warningErrors.length) {
       console.warn(`批次警告（來源圖片不存在，已跳過）：${JSON.stringify(warningErrors)}`);
@@ -239,8 +242,8 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
       console.error(`批次錯誤：${JSON.stringify(blockingErrors)}`);
     }
     return {
-      create: response?.summary?.create || 0,
-      update: response?.summary?.update || 0,
+      create: (upsertOnly ? response?.result?.created : response?.summary?.create) || 0,
+      update: (upsertOnly ? response?.result?.updated : response?.summary?.update) || 0,
       unchanged: response?.summary?.unchanged || 0,
       pendingReview: response?.summary?.pendingReview || 0,
       skippedCity: response?.summary?.skippedCity || 0,
@@ -250,7 +253,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
   }
   // Three small requests in parallel keep each Worker invocation lightweight
   // while finishing the full catalogue comfortably within the Actions limit.
-  const concurrency = 3;
+  const concurrency = upsertOnly ? 1 : 3;
   for (let index = 0; index < chunks.length; index += concurrency) {
     const wave = chunks.slice(index, index + concurrency);
     const results = await Promise.all(wave.map((chunk, offset) => syncChunk(chunk, index + offset)));
@@ -259,13 +262,14 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
-  if (commit && !selectedCity && limit === 0 && totals.errors === 0 && totals.warnings === 0) {
+  if (shouldFinalize({commit,selectedCity,limit,errors:totals.errors,warnings:totals.warnings,upsertOnly})) {
     const cleanupTotals = await finishSnapshot(postPayload,
       { mode: "commit", capturedAt, profiles: [], finalizeSnapshot: true, snapshotSourceKeys: catalogue.sourceKeys, snapshotProof: catalogue.snapshotProof },
       { pause: () => new Promise((resolve) => setTimeout(resolve, 350)),
         onPage: (pass, page) => console.log(`Cleanup pass ${pass}: ${JSON.stringify(page)}`) });
     console.log(`Cleanup totals: ${JSON.stringify(cleanupTotals)}`);
   }
+  if (upsertOnly) console.log("RECOVERY CREATE-ONLY: no absence deletion, no finalizer/media queue; three-day lifecycle NOT enabled.");
   console.log(JSON.stringify(totals, null, 2));
   if (totals.errors) throw new Error(`同步完成但有 ${totals.errors} 筆錯誤；已保留既有資料並略過刪除，下次排程會重試。`);
   if (totals.warnings) throw new Error("Source image warnings were present; permanent cleanup was skipped for safety.");
