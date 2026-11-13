@@ -27,4 +27,4 @@ jobs:
         env:
           PROFILE_SYNC_ENDPOINT: https://sexytw.cc/api/profile-sync
           PROFILE_SYNC_SECRET: ${{ secrets.PROFILE_SYNC_SECRET }}
-        run: node scripts/edc-profile-sync.mjs --commit --create-only
+        run: node scripts/edc-profile-sync.mjs --commit --create-only --presence-v3
