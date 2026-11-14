@@ -1,3 +1,4 @@
+import { readSyncResponse, responseDiagnostic, errorCategories, SafeSyncResponseError, safeFailure, safeBatchSummary } from "../lib/sync-response-diagnostics.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { assertSyncEndpoint, verifySyncTarget } from "../lib/profile-sync-target.mjs";
@@ -150,7 +151,7 @@ async function collectProfiles(selectedCity, limit) {
   });
 }
 
-async function postPayload(payload) {
+async function postPayload(payload, options) {
   const endpoint = process.env.PROFILE_SYNC_ENDPOINT;
   const secret = process.env.PROFILE_SYNC_SECRET;
   if (!endpoint || !secret) return null;
@@ -162,18 +163,9 @@ async function postPayload(payload) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
     body: JSON.stringify(payload),
   });
-  const result = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-  if (!response.ok && response.status !== 207) throw new Error(JSON.stringify(result));
-  return result;
+  return readSyncResponse(response, options);
 }
 
-function errorMessage(error) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === "object") {
-    try { return JSON.stringify(error); } catch { return "object-error"; }
-  }
-  return String(error || "unknown-error");
-}
 
 loadLocalEnv();
 const commit = process.argv.includes("--commit");
@@ -218,14 +210,14 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     const maxAttempts = upsertOnly ? 1 : 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        response = await postPayload(syncBatchPayload({commit,capturedAt,profiles:chunk,upsertOnly}));
-        if (!response || response.ok !== true || !response.summary || typeof response.summary !== "object" || Array.isArray(response.summary) || (commit && (!response.result || typeof response.result !== "object" || !Array.isArray(response.result.errors)))) throw new Error("Invalid or unsuccessful sync batch response.");
+        response = await postPayload(syncBatchPayload({commit,capturedAt,profiles:chunk,upsertOnly}), {batch: true});
+        if (!response || response.ok !== true || !response.summary || typeof response.summary !== "object" || Array.isArray(response.summary) || (commit && (!response.result || typeof response.result !== "object" || !Array.isArray(response.result.errors)))) throw new SafeSyncResponseError({ ...responseDiagnostic(response), batchValidation: "rejected" });
         const attemptErrors = response?.result?.errors || [];
         const blockingErrors = attemptErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
         if (!blockingErrors.length) { succeeded = true; break; }
-        console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次嘗試失敗：${JSON.stringify(blockingErrors)}`);
+        console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次嘗試失敗：${JSON.stringify(errorCategories(blockingErrors))}`);
       } catch (error) {
-        terminalHttpError = errorMessage(error);
+        terminalHttpError = safeFailure(error);
         console.error(`批次 ${index + 1}/${chunks.length} 第 ${attempt} 次 HTTP 嘗試失敗：${terminalHttpError}`);
       }
       if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
@@ -237,12 +229,12 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     const responseErrors = response?.result?.errors || [];
     const warningErrors = responseErrors.filter((item) => !upsertOnly && item?.message === "image-download-404");
     const blockingErrors = responseErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
-    console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify(response?.summary || response)}`);
+    console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify({ ...responseDiagnostic(response), summary: safeBatchSummary(response.summary) })}`);
     if (warningErrors.length) {
-      console.warn(`批次警告（來源圖片不存在，已跳過）：${JSON.stringify(warningErrors)}`);
+      console.warn(`批次警告（來源圖片不存在，已跳過）：${JSON.stringify(errorCategories(warningErrors))}`);
     }
     if (blockingErrors.length) {
-      console.error(`批次錯誤：${JSON.stringify(blockingErrors)}`);
+      console.error(`批次錯誤：${JSON.stringify(errorCategories(blockingErrors))}`);
     }
     return {
       create: (upsertOnly ? response?.result?.created : response?.summary?.create) || 0,
@@ -286,3 +278,4 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
 } else {
   console.log("尚未設定 PROFILE_SYNC_ENDPOINT / PROFILE_SYNC_SECRET，因此只建立本機預覽，不會修改正式網站。 ");
 }
+
