@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {reconcilePresence} from '../lib/profile-presence-v3.mjs';
+import {responseDiagnostic, errorCategories, SafeSyncResponseError, safeFailure, safeBatchSummary} from '../lib/sync-response-diagnostics.mjs';
 const now=Date.now(),body={capturedAt:new Date(now-1).toISOString(),snapshotSourceKeys:['1'],snapshotProof:{complete:true,sourceTotal:1,rawCount:1,sourcePages:1,pagesFetched:1,importErrors:0,importWarnings:0}};
 test('only non destructive RPC called',async()=>{const calls=[];const r=await reconcilePresence({rpc:async(n)=>{calls.push(n);return {data:{complete:true,deleted:0,imagesDeleted:0,hidden:1}};}},body,now);assert.deepEqual(calls,['sexytw_finalize_presence_v3']);assert.equal(r.hidden,1);});
 for(const patch of [{complete:false},{importErrors:1},{importWarnings:1},{importErrors:undefined},{rawCount:2}])test('invalid proof '+JSON.stringify(patch),async()=>{let called=false;await assert.rejects(reconcilePresence({rpc:async()=>{called=true;}},{...body,snapshotProof:{...body.snapshotProof,...patch}},now));assert.equal(called,false);});
@@ -16,9 +17,9 @@ const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 async function exerciseBatch(reply){
   const calls=[];
   const postPayload=async payload=>{calls.push(payload);return payload.presenceSnapshot?{ok:true,presence:{complete:true}}:reply;};
-  const run=new AsyncFunction('postPayload',`
+  const run=new AsyncFunction('postPayload','responseDiagnostic','errorCategories','SafeSyncResponseError','safeFailure','safeBatchSummary',`
     const upsertOnly=true,commit=true,presenceV3=true,capturedAt='2026-11-13T00:00:00Z',chunks=[[{}]],selectedCity='',limit=0;
-    const console={log(){},warn(){},error(){}},errorMessage=String;
+    const console={log(){},warn(){},error(){}};
     const syncBatchPayload=x=>x;
     const catalogue={sourceKeys:['1'],snapshotProof:{complete:true}};
     ${batchCode}
@@ -26,7 +27,7 @@ async function exerciseBatch(reply){
     ${gateCode}
     return totals;
   `);
-  return {totals:await run(postPayload),calls};
+  return {totals:await run(postPayload,responseDiagnostic,errorCategories,SafeSyncResponseError,safeFailure,safeBatchSummary),calls};
 }
 for(const [label,reply] of [
   ['missing summary',{ok:true,result:{errors:[]}}],
