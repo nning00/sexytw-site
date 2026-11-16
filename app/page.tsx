@@ -63,7 +63,6 @@ export default async function Home() {
       <RegionNav />
 
       <section className="hero" id="top">
-        <div className="hero-sun" aria-hidden="true" />
         <div className="hero-copy">
           <p className="eyebrow">{settings.brand.name} · TAIWAN</p>
           <h1>{settings.homepage.hero_title}</h1>
@@ -74,23 +73,36 @@ export default async function Home() {
           </div>
           <p className="adult-note">{settings.homepage.adult_note}</p>
         </div>
-        <div className="hero-photo">
-          <picture>
-            <source media="(min-width: 701px)" srcSet={heroDesktop} />
-            <img
-              src={heroMobile}
-              alt={settings.homepage.hero_image_alt}
-              width="800"
-              height="1000"
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              style={{
-                "--hero-position-desktop": settings.homepage.hero_image_position_desktop,
-                "--hero-position-mobile": settings.homepage.hero_image_position_mobile,
-              } as CSSProperties}
-            />
-          </picture>
+        <div className="hero-showcase">
+          <div className="hero-sun" aria-hidden="true" />
+          <svg className="hero-orbit" viewBox="0 0 440 460" fill="none" aria-hidden="true" focusable="false">
+            <circle cx="220" cy="226" r="183" />
+            <circle cx="220" cy="226" r="171" strokeDasharray="1 6" strokeLinecap="round" />
+            <path d="M382 52v42m-21-21h42M397 23v18m-9-9h18M51 350v30m-15-15h30" strokeLinecap="round" />
+            <circle className="hero-orbit-dot" cx="50" cy="128" r="12" />
+            <circle className="hero-orbit-dot" cx="382" cy="322" r="7" />
+          </svg>
+          <div className="hero-photo">
+            <picture>
+              <source media="(min-width: 701px)" srcSet={heroDesktop} />
+              <img
+                src={heroMobile}
+                alt={settings.homepage.hero_image_alt}
+                width="800"
+                height="1000"
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
+                style={{
+                  "--hero-position-desktop": settings.homepage.hero_image_position_desktop,
+                  "--hero-position-mobile": settings.homepage.hero_image_position_mobile,
+                } as CSSProperties}
+              />
+            </picture>
+          </div>
+          <div className="hero-love-stamp" aria-hidden="true">
+            <span>LOVE BUBBLES</span><strong>戀愛泡泡</strong>
+          </div>
         </div>
         <div className="hero-overlay" aria-hidden="true" />
       </section>
