@@ -7,6 +7,8 @@ import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs";
 import { changedFields, finalizeSnapshot } from "@/lib/profile-sync-snapshot.mjs";
 import { createImageRetryBudget, fetchSourceImage } from "@/lib/source-image-get.mjs";
+import { isResumeRecovery, resumeLaneAdmission, supportedRecoveryHeader } from "@/lib/profile-resume-lane.mjs";
+import { getProfileResumeCapability, getTrustedResumeStore, resumeCreateOnlyProfile } from "@/lib/sexytw-profile-resume.mjs";
 
 import { reconcilePresence } from "@/lib/profile-presence-v3.mjs";
 
@@ -150,7 +152,11 @@ function fileExtension(contentType: string | null, sourceUrl: string) {
   return extension && ["jpg", "jpeg", "png", "webp", "avif"].includes(extension) ? extension : "jpg";
 }
 
-async function downloadImage(url: string, retryBudget: ReturnType<typeof createImageRetryBudget>) {
+async function downloadImage(
+  url: string,
+  retryBudget: ReturnType<typeof createImageRetryBudget>,
+  refuseRedirect = false,
+) {
   const response = await fetchSourceImage(url, {
     headers: {
       Accept: "image/avif,image/webp,image/png,image/jpeg",
@@ -158,6 +164,7 @@ async function downloadImage(url: string, retryBudget: ReturnType<typeof createI
       "User-Agent": "AuthorizedProfileSync/1.0",
     },
     cache: "no-store",
+    ...(refuseRedirect ? { redirect: "manual" as const } : {}),
   }, retryBudget);
   if (!response.ok) throw new Error(`image-download-${response.status}`);
   const contentType = response.headers.get("content-type");
@@ -254,6 +261,23 @@ async function syncImages(profileId: string, displayName: string, images: Source
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
   if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+  const requestedRecovery = request.headers.get("X-Sync-Recovery");
+  if (!supportedRecoveryHeader(requestedRecovery))
+    return NextResponse.json({ ok: false, code: "unsupported-sync-recovery" }, { status: 400, headers });
+  if (isResumeRecovery(requestedRecovery)) {
+    const unavailable = (code: string, status: number) =>
+      NextResponse.json({ ok: false, code }, { status, headers });
+    if (process.env.PROFILE_SYNC_RESUME_V2 !== "1") return unavailable("resume-disabled", 409);
+    try {
+      assertSyncEnvironment(process.env);
+      const store = getTrustedResumeStore();
+      if (!store || !(await getProfileResumeCapability(createAdminClient(), store)))
+        return unavailable("resume-capability-unavailable", 503);
+      return NextResponse.json({ ok: true, createOnlyResumeVersion: 2 }, { headers });
+    } catch {
+      return unavailable("resume-capability-unavailable", 503);
+    }
+  }
   try {
     assertSyncEnvironment(process.env);
     const client = createAdminClient();
@@ -287,7 +311,18 @@ export async function POST(request: Request) {
   try { assertSyncEnvironment(process.env); } catch {
     return NextResponse.json({ error: "Sync target configuration mismatch" }, { status: 503 });
   }
+  const requestedRecovery = request.headers.get("X-Sync-Recovery");
+  const isResume = isResumeRecovery(requestedRecovery);
+  const recoveryHeaders = { "Cache-Control": "private, no-store" };
+  if (!supportedRecoveryHeader(requestedRecovery))
+    return NextResponse.json({ ok: false, code: "unsupported-sync-recovery" }, { status: 400, headers: recoveryHeaders });
+  if (isResume && process.env.PROFILE_SYNC_RESUME_V2 !== "1")
+    return NextResponse.json({ ok: false, code: "resume-disabled" }, { status: 409, headers: recoveryHeaders });
   const body = await request.json().catch(() => null) as SyncBody | null;
+  // Explicit new protocol; never fall through to legacy maintenance or revalidation.
+  if (isResume) {
+    return handleResumeCreateOnly(body, imageRetryBudget);
+  }
   const snapshotSourceKeys = Array.isArray(body?.snapshotSourceKeys)
     ? body.snapshotSourceKeys.map((value) => clean(value, 80).toLowerCase().replace(/[^a-z0-9_-]/g, "")).filter(Boolean)
     : [];
@@ -478,4 +513,64 @@ export async function POST(request: Request) {
     revalidatePath("/sitemap.xml");
   }
   return NextResponse.json({ ok: result.errors.length === 0, mode, summary, result }, { status: result.errors.length ? 207 : 200 });
+}
+
+
+async function handleResumeCreateOnly(
+  body: SyncBody | null,
+  imageRetryBudget: ReturnType<typeof createImageRetryBudget>,
+) {
+  const headers = { "Cache-Control": "private, no-store" };
+  const stop = (code: string, status: number) =>
+    NextResponse.json({ ok: false, code }, { status, headers });
+  const admission = resumeLaneAdmission(process.env.PROFILE_SYNC_RESUME_V2, body);
+  if (!admission.ok) return stop(admission.code!, admission.status!);
+  const rawProfile = body!.profiles![0];
+  if (!rawProfile || typeof rawProfile !== "object" || Array.isArray(rawProfile) ||
+    !Array.isArray(rawProfile.images) || rawProfile.images.length < 1 ||
+    rawProfile.images.length > MAX_IMAGES_PER_PROFILE) return stop("resume-invalid-profile-or-images", 400);
+  const profile = normalizeProfile(rawProfile);
+  if (!profile || profile.images.length !== rawProfile.images.length)
+    return stop("resume-invalid-profile-or-images", 400);
+  try {
+    const store = getTrustedResumeStore();
+    if (!store) return stop("resume-capability-unavailable", 503);
+    const client = createAdminClient();
+    if (!(await getProfileResumeCapability(client, store))) return stop("resume-capability-unavailable", 503);
+    const { data: cities, error } = await client.from("cities").select("id").eq("name", profile.cityName).limit(2);
+    if (error || cities?.length !== 1) return stop("resume-city-verification-failed", 409);
+    const result = await resumeCreateOnlyProfile(client, {
+      provider: PROVIDER,
+      sourceKey: profile.sourceKey,
+      capturedAt: admission.capturedAt!,
+      contentHash: profile.contentHash,
+      cityId: cities[0].id,
+      draft: {
+        slug: `source-${profile.sourceKey}`,
+        display_name: profile.displayName,
+        style: "",
+        interest: "",
+        introduction: serializeProfileDetails(profile.details),
+        status: "draft",
+        sort_order: 99,
+        seo_title: `${profile.cityName}${profile.details.serviceMethod || "形象資訊"}｜${profile.displayName}｜編號${profile.sourceKey}`,
+        seo_description: buildProfileSeoDescription(profile.cityName, profile.displayName, profile.details),
+        source_provider: PROVIDER,
+        source_key: profile.sourceKey,
+        source_url: profile.sourceUrl,
+        source_last_seen_at: admission.capturedAt,
+        adult_review_status: profile.verifiedAdult ? "verified" : "pending",
+        adult_verified_at: profile.verifiedAdult ? admission.capturedAt : null,
+        adult_verified_by: null,
+      },
+      images: profile.images.map((image, index) => ({
+        url: image.url,
+        alt: image.alt || `${profile.displayName}形象照片 ${index + 1}`,
+      })),
+    }, (url) => downloadImage(url, imageRetryBudget, true), store);
+    return NextResponse.json({ ok: true, mode: "commit", resumeVersion: 2, ...result }, { headers });
+  } catch {
+    // A failed or interrupted operation is never retried through the normal write path.
+    return stop("resume-incomplete-or-conflict", 207);
+  }
 }

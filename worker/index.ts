@@ -3,6 +3,7 @@ import handler from "vinext/server/fetch-handler";
 import { getOriginalFetch } from "vinext/shims/fetch-cache";
 import { applyArticleCanonical } from "../lib/article-canonical.mjs";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
+import { isProtectedImageOptimizerRequest } from "../lib/resume-media-url.mjs";
 import { withPublicReadScope } from "../lib/public-read-scope.mjs";
 
 const worker = {
@@ -32,6 +33,10 @@ const worker = {
     }
     if (redirect) {
       return Response.redirect(requestUrl.toString(), 308);
+    }
+
+    if (isProtectedImageOptimizerRequest(requestUrl)) {
+      return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store", "CDN-Cache-Control": "no-store", "Cloudflare-CDN-Cache-Control": "no-store" } });
     }
 
     const publicHome = request.method === "GET" && requestUrl.pathname === "/";
