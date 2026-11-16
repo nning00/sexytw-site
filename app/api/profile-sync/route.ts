@@ -6,6 +6,7 @@ import { buildProfileSeoDescription, normalizeProfileDetails, serializeProfileDe
 import { isOwnedMediaPath, scopedMediaPath } from "@/lib/site-instance";
 import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs";
 import { changedFields, finalizeSnapshot } from "@/lib/profile-sync-snapshot.mjs";
+import { createImageRetryBudget, fetchSourceImage } from "@/lib/source-image-get.mjs";
 
 import { reconcilePresence } from "@/lib/profile-presence-v3.mjs";
 
@@ -149,15 +150,15 @@ function fileExtension(contentType: string | null, sourceUrl: string) {
   return extension && ["jpg", "jpeg", "png", "webp", "avif"].includes(extension) ? extension : "jpg";
 }
 
-async function downloadImage(url: string) {
-  const response = await fetch(url, {
+async function downloadImage(url: string, retryBudget: ReturnType<typeof createImageRetryBudget>) {
+  const response = await fetchSourceImage(url, {
     headers: {
       Accept: "image/avif,image/webp,image/png,image/jpeg",
       Referer: `${SOURCE_ORIGIN}/`,
       "User-Agent": "AuthorizedProfileSync/1.0",
     },
     cache: "no-store",
-  });
+  }, retryBudget);
   if (!response.ok) throw new Error(`image-download-${response.status}`);
   const contentType = response.headers.get("content-type");
   if (!contentType?.startsWith("image/")) throw new Error("image-content-type-invalid");
@@ -166,7 +167,7 @@ async function downloadImage(url: string) {
   return { bytes, contentType, extension: fileExtension(contentType, url) };
 }
 
-async function syncImages(profileId: string, displayName: string, images: SourceImage[], createOnly = false) {
+async function syncImages(profileId: string, displayName: string, images: SourceImage[], createOnly = false, retryBudget: ReturnType<typeof createImageRetryBudget>) {
   const supabase = createAdminClient();
   const { data: trackedRows, error: trackedError } = await supabase
     .from("profile_source_images")
@@ -194,7 +195,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
   for (const [index, image] of images.entries()) {
     let storagePath = tracked.get(image.url);
     if (!storagePath) {
-      const downloaded = await downloadImage(image.url);
+      const downloaded = await downloadImage(image.url, retryBudget);
       const imageHash = createHash("sha256").update(image.url).digest("hex").slice(0, 24);
       storagePath = scopedMediaPath(`profiles/synced/${profileId}/${imageHash}.${downloaded.extension}`);
       const { error: uploadError } = await supabase.storage.from("site-media").upload(storagePath, downloaded.bytes, {
@@ -281,6 +282,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const imageRetryBudget = createImageRetryBudget();
   if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try { assertSyncEnvironment(process.env); } catch {
     return NextResponse.json({ error: "Sync target configuration mismatch" }, { status: 503 });
@@ -448,7 +450,7 @@ export async function POST(request: Request) {
       if (assignmentDeleteError) throw assignmentDeleteError;
       const { error: assignmentError } = await supabase.from("profile_cities").insert({ profile_id: profileId, city_id: city.id });
       if (assignmentError) throw assignmentError;
-      const {coverPath,proof} = await syncImages(profileId, profile.displayName, profile.images, body.createOnly);
+      const {coverPath,proof} = await syncImages(profileId, profile.displayName, profile.images, body.createOnly, imageRetryBudget);
       if (body.createOnly) {
         const {error: completeError} = await supabase.rpc("sexytw_complete_new_profile", {
           p_id:profileId,p_marker:payload.source_content_hash,p_expected_updated_at:save.data.updated_at,
