@@ -693,3 +693,313 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Love Bubbles — public storefront only. Keep the CMS palette and existing layout intact. */
+body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page, .city-page, .detail-page, .profile-detail-page, .legal-page, .not-found-page))) {
+  --bubble-surface: #fff8fb;
+  --bubble-panel: #fdecf4;
+  --bubble-petal: #f5d5e5;
+  --bubble-ink: #391a30;
+  --bubble-muted: #74455e;
+  --bubble-accent: #a8225e;
+  --bubble-hover: #86184a;
+  --bubble-edge: #edc8db;
+  --bubble-control-edge: #b97698;
+  --bubble-halo: #cb65952e;
+  --bubble-paper: #fff;
+  --bubble-card-radius: 1.5rem;
+  --bubble-pill: 999px;
+  --ink: var(--bubble-ink);
+  --muted: var(--bubble-muted);
+  --rose: var(--bubble-accent);
+  --deep-rose: var(--bubble-hover);
+  --blush: var(--bubble-petal);
+  --pale: var(--bubble-panel);
+  --cream: var(--bubble-surface);
+  --line: var(--bubble-edge);
+  --sun: var(--bubble-petal);
+  --sun-soft: var(--bubble-panel);
+  --coral: var(--bubble-accent);
+  --berry: var(--bubble-ink);
+  --mint: var(--bubble-panel);
+  --sky: var(--bubble-panel);
+  --butter: var(--bubble-petal);
+  --teal: var(--bubble-accent);
+  --teal-deep: var(--bubble-hover);
+
+  background-color: var(--cream);
+  color: var(--ink);
+
+  & :focus-visible {
+    outline-color: var(--bubble-accent);
+  }
+
+  & .eyebrow,
+  & .home-page .hero .eyebrow,
+  & .home-page .contact .eyebrow,
+  & .home-page .service-body > span,
+  & .article-center-card-copy > span,
+  & .article-center-card strong {
+    color: var(--bubble-hover);
+  }
+
+  & .site-header,
+  & .detail-header {
+    background: var(--cream);
+    border-bottom-color: var(--line);
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  & .region-nav,
+  & .drawer-tabs,
+  & .drawer-region-group h2 {
+    background: var(--pale);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+
+  & .region-dropdown-menu,
+  & .mobile-drawer,
+  & .drawer-search {
+    background: var(--cream);
+    border-color: var(--line);
+  }
+
+  & .region-dropdown-menu {
+    border-radius: 1rem;
+    box-shadow: 0 12px 32px #391a301f;
+  }
+
+  & .region-dropdown-menu a,
+  & .drawer-list a {
+    border-color: var(--line);
+  }
+
+  & .drawer-search > span { color: var(--muted); }
+  & .drawer-tabs button.active { border-bottom-color: var(--rose); }
+
+  & :is(.button.primary, .button.secondary, .nav-cta, .hero-text-link, .front-top-button) {
+    border-radius: var(--bubble-pill);
+  }
+
+  & :is(.nav-cta, .button.primary, .floating-line) {
+    background: var(--bubble-accent);
+    color: var(--bubble-paper);
+    border-color: var(--bubble-accent);
+    box-shadow: none;
+  }
+
+  & :is(.nav-cta, .button.primary, .floating-line):hover {
+    background: var(--bubble-hover);
+    color: var(--bubble-paper);
+    border-color: var(--bubble-hover);
+  }
+
+  & :is(.button, .hero-text-link):not(.nav-cta) {
+    max-inline-size: 100%;
+  }
+
+  & :is(.button.secondary, .hero-text-link, .front-top-button, .drawer-close) {
+    background: var(--cream);
+    color: var(--bubble-hover);
+    border: 1px solid var(--bubble-control-edge);
+  }
+
+  & :is(.button.secondary, .hero-text-link, .front-top-button, .drawer-close):hover {
+    background: var(--bubble-panel);
+    color: var(--bubble-hover);
+    border-color: var(--bubble-accent);
+  }
+
+  & .hero-text-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: var(--tw-touch-size);
+    padding: .625rem 1rem;
+    text-align: center;
+  }
+
+  & :is(.button, .nav-cta, .hero-text-link):active:not(:disabled) {
+    translate: 0 1px;
+  }
+
+  & .home-page .hero-actions :is(.button, .hero-text-link) {
+    min-height: 48px;
+    line-height: 1.5;
+    white-space: normal;
+  }
+
+  & .home-page .hero .adult-note { color: var(--muted); }
+
+  /* A fixed group of rings around the portrait, not behind the text or above the controls. */
+  & .home-page .hero-sun {
+    position: absolute;
+    display: block;
+    inset: 0;
+    z-index: -1;
+    width: auto;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: transparent;
+    filter: none;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  & .home-page .hero-sun::before,
+  & .home-page .hero-sun::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: inset 2px 3px 0 #fff9;
+  }
+
+  & .home-page .hero-sun::before {
+    inset: 6% min(4%, 2.5rem) auto auto;
+    height: min(88%, 24rem);
+    aspect-ratio: 1;
+    border: 2px solid var(--bubble-edge);
+    background: var(--bubble-panel);
+  }
+
+  & .home-page .hero-sun::after {
+    inset: auto 34% 9% auto;
+    width: clamp(2rem, 6vw, 3.75rem);
+    aspect-ratio: 1;
+    border: 1px solid var(--bubble-control-edge);
+    background: var(--bubble-petal);
+  }
+
+  & .home-page .hero-photo {
+    background: var(--bubble-paper);
+    border: 4px solid var(--bubble-paper);
+    border-radius: 2rem 2rem 2rem 1rem;
+    box-shadow: 0 12px 32px var(--bubble-halo);
+  }
+
+  & .tw-destination-grid article,
+  & .tw-destination-grid article[data-region] {
+    background: var(--pale);
+    border-color: var(--line);
+    border-radius: var(--bubble-card-radius);
+    box-shadow: none;
+  }
+
+  & .tw-destination-grid article::after {
+    border-color: var(--line);
+  }
+
+  & .tw-region-title > span {
+    background: var(--bubble-paper);
+    border-color: var(--bubble-control-edge);
+  }
+
+  & .tw-region-title:is(:hover, :focus-visible) > span {
+    background: var(--bubble-accent);
+    color: var(--bubble-paper);
+  }
+
+  & .tw-city-links a {
+    color: var(--bubble-hover);
+    background: var(--cream);
+    border-color: var(--bubble-control-edge);
+  }
+
+  & .tw-city-links a:hover {
+    color: var(--bubble-hover);
+    background: var(--bubble-petal);
+    border-color: var(--bubble-accent);
+  }
+
+  & .home-page .gallery-item[class*="item-"],
+  & .home-page .service-card:nth-child(n),
+  & .home-page .home-articles .article-center-card,
+  & :is(.article-center-card, .article-shell, .article-related, .city-card, .profile-card, .profile-carousel, .region-hero, .detail-hero, .legal-shell, .not-found-card) {
+    border-color: var(--line);
+    border-radius: var(--bubble-card-radius);
+    box-shadow: none;
+  }
+
+  & .home-page .service-card:nth-child(n):hover,
+  & :is(.article-center-card, .city-card, .profile-card):hover {
+    border-color: var(--bubble-control-edge);
+  }
+
+  & .home-page .service-card:nth-child(n) { background: var(--bubble-paper); }
+  & .home-page .service-card a { color: var(--bubble-hover); }
+
+  & .home-page :is(.gallery-section, .faq),
+  & :is(.contact, .region-hero, .region-rules, .city-seo, .profile-description, .detail-copy, .profile-carousel-stage, .article-center-card-image, .legal-page) {
+    background: var(--pale);
+  }
+
+  & .home-page :is(.contact, .promise) {
+    background: var(--bubble-petal);
+    color: var(--ink);
+  }
+
+  & .home-page .promise {
+    border: 1px solid var(--line);
+    border-radius: var(--bubble-card-radius);
+  }
+
+  & .home-page .promise-copy :is(h2, li strong) { color: var(--ink); }
+  & .home-page .promise-copy li p { color: var(--muted); }
+  & .home-page .promise-copy :is(.eyebrow, li > span) { color: var(--bubble-hover); }
+  & .home-page .promise-copy li { border-color: var(--bubble-control-edge); }
+  & .home-page .faq-list details { border-radius: 1rem; }
+
+  & :is(.article-shell, .article-toc, .article-category-tabs, .article-context-links a, .article-related-grid > a, .profile-summary > div) {
+    border-color: var(--line);
+  }
+
+  & .article-shell { border-top-color: var(--bubble-control-edge); }
+  & .article-category-tabs { background: var(--bubble-paper); border-radius: 1rem; }
+  & .article-category-tabs a:is(.active, :hover) { background: var(--bubble-accent); color: var(--bubble-paper); }
+  & .article-context-links a:hover { background: var(--bubble-petal); border-color: var(--bubble-control-edge); }
+  & .profile-carousel-stage { border-radius: 1rem; }
+  & .profile-carousel-arrow { color: var(--bubble-paper); background: var(--bubble-ink); backdrop-filter: none; }
+  & .profile-carousel-arrow:hover { background: var(--bubble-hover); }
+
+  & .age-gate,
+  & .mobile-drawer-backdrop { background: #391a30bd; backdrop-filter: none; }
+  & .age-card { background: var(--cream); border-color: var(--line); }
+  & .age-mark { background: var(--bubble-accent); color: var(--bubble-paper); }
+
+  & .site-footer {
+    color: var(--muted);
+    background: var(--bubble-petal);
+    border-top: 1px solid var(--line);
+  }
+
+  & .site-footer :is(.footer-brand, h2) { color: var(--ink); }
+  & .site-footer :is(.footer-about > p, .footer-column a, .footer-city-directory a, .footer-bottom) { color: var(--muted); }
+  & .site-footer :is(.footer-line, .footer-column a:hover, .footer-city-directory a:hover, .footer-bottom a:hover) { color: var(--bubble-hover); }
+  & .site-footer :is(.footer-city-directory, .footer-bottom) { border-top-color: var(--bubble-control-edge); }
+
+  @media (max-width: 700px) {
+    & .home-page .hero { padding-bottom: 2rem; }
+    & .home-page .hero-photo { margin-block-start: .75rem; }
+    & .home-page .hero-sun::before {
+      inset: auto 8% 0 auto;
+      width: min(68%, 16rem);
+      height: auto;
+    }
+    & .home-page .hero-sun::after { inset: auto auto 15% 9%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & :is(.button, .nav-cta, .hero-text-link):active { translate: none; }
+    & .tw-region-title:is(:hover, :focus-visible) > span { transform: none; }
+  }
+
+  @media (prefers-contrast: more) {
+    --bubble-control-edge: var(--bubble-hover);
+    --bubble-edge: var(--bubble-muted);
+    & .home-page .hero-sun { display: none; }
+  }
+}
