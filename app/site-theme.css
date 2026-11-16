@@ -694,19 +694,19 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
   html { scroll-behavior: auto; }
 }
 
-/* Love Bubbles — public storefront only. Keep the CMS palette and existing layout intact. */
+/* Cream Pink Love Bubbles — public storefront only; leaves the CMS palette intact. */
 body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page, .city-page, .detail-page, .profile-detail-page, .legal-page, .not-found-page))) {
-  --bubble-surface: #fff8fb;
-  --bubble-panel: #fdecf4;
-  --bubble-petal: #f5d5e5;
-  --bubble-ink: #391a30;
-  --bubble-muted: #74455e;
-  --bubble-accent: #a8225e;
-  --bubble-hover: #86184a;
-  --bubble-edge: #edc8db;
-  --bubble-control-edge: #b97698;
-  --bubble-halo: #cb65952e;
-  --bubble-paper: #fff;
+  --bubble-surface: #fff8f1;
+  --bubble-panel: #fbede6;
+  --bubble-petal: #f5ddd5;
+  --bubble-ink: #44282a;
+  --bubble-muted: #785249;
+  --bubble-accent: #9d4555;
+  --bubble-hover: #823446;
+  --bubble-edge: #eaccc3;
+  --bubble-control-edge: #aa6c68;
+  --bubble-halo: #bd76682e;
+  --bubble-paper: #fffdfa;
   --bubble-card-radius: 1.5rem;
   --bubble-pill: 999px;
   --ink: var(--bubble-ink);
@@ -768,7 +768,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
 
   & .region-dropdown-menu {
     border-radius: 1rem;
-    box-shadow: 0 12px 32px #391a301f;
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--bubble-ink) 12%, transparent);
   }
 
   & .region-dropdown-menu a,
@@ -834,7 +834,48 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
 
   & .home-page .hero .adult-note { color: var(--muted); }
 
-  /* A fixed group of rings around the portrait, not behind the text or above the controls. */
+  /* Editorial cover: artwork is local to the portrait, outside the reading order. */
+  & .home-page .hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    padding-block: clamp(2rem, 5vw, 5rem) clamp(2.5rem, 5vw, 5rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  & .home-page .hero .eyebrow {
+    display: inline-block;
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    padding: .5rem 1rem;
+    border: 1px solid var(--bubble-control-edge);
+    border-radius: var(--bubble-pill);
+    background: var(--pale);
+    overflow-wrap: anywhere;
+  }
+
+  & .home-page .hero h1 {
+    max-inline-size: 10em;
+    margin-block: 1rem 1.5rem;
+    font-size: clamp(2.75rem, 5.25vw, 5rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -.035em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  & .home-page .hero h1::first-line { color: var(--bubble-hover); }
+
+  & .home-page .hero-showcase {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+    align-self: center;
+    min-inline-size: 0;
+    padding: clamp(1rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2.5rem) clamp(2rem, 4vw, 4rem);
+  }
+
   & .home-page .hero-sun {
     position: absolute;
     display: block;
@@ -846,7 +887,6 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     border-radius: 0;
     background: transparent;
     filter: none;
-    overflow: hidden;
     pointer-events: none;
   }
 
@@ -855,30 +895,124 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     content: "";
     position: absolute;
     border-radius: 50%;
-    box-shadow: inset 2px 3px 0 #fff9;
+    box-shadow: inset 2px 3px 0 color-mix(in srgb, var(--bubble-paper) 60%, transparent);
   }
 
   & .home-page .hero-sun::before {
-    inset: 6% min(4%, 2.5rem) auto auto;
-    height: min(88%, 24rem);
+    inset: 50% auto auto 50%;
+    width: min(86%, 26rem);
     aspect-ratio: 1;
-    border: 2px solid var(--bubble-edge);
-    background: var(--bubble-panel);
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--line);
+    background: var(--bubble-petal);
   }
 
   & .home-page .hero-sun::after {
-    inset: auto 34% 9% auto;
-    width: clamp(2rem, 6vw, 3.75rem);
+    inset: auto auto 12% 2%;
+    width: clamp(2rem, 5vw, 4rem);
     aspect-ratio: 1;
     border: 1px solid var(--bubble-control-edge);
     background: var(--bubble-petal);
   }
 
   & .home-page .hero-photo {
+    grid-area: auto;
+    min-inline-size: 0;
+    width: min(100%, 23rem);
     background: var(--bubble-paper);
-    border: 4px solid var(--bubble-paper);
-    border-radius: 2rem 2rem 2rem 1rem;
-    box-shadow: 0 12px 32px var(--bubble-halo);
+    border: .5rem solid var(--bubble-paper);
+    border-radius: 48% 48% 2rem 2rem / 34% 34% 2rem 2rem;
+    box-shadow: 0 16px 32px var(--bubble-halo), 0 0 0 1px var(--line);
+  }
+
+  & .home-page .hero-orbit {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    stroke: var(--bubble-control-edge);
+    stroke-width: 1.25;
+    pointer-events: none;
+  }
+
+  & .home-page .hero-orbit-dot { fill: var(--pale); }
+
+  & .home-page .hero-love-stamp {
+    position: absolute;
+    inset: auto 4% 5% auto;
+    z-index: 1;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: .25rem;
+    width: clamp(5rem, 10vw, 8rem);
+    aspect-ratio: 1;
+    border: 1px solid var(--bubble-control-edge);
+    border-radius: 50%;
+    outline: .25rem solid var(--bubble-paper);
+    background: var(--bubble-petal);
+    color: var(--bubble-hover);
+    box-shadow: 0 8px 16px var(--bubble-halo);
+    text-align: center;
+    transform: rotate(-13deg);
+    pointer-events: none;
+  }
+
+  & .home-page .hero-love-stamp span {
+    font: 700 .75rem/1.2 var(--tw-font-body);
+    letter-spacing: .07em;
+  }
+
+  & .home-page .hero-love-stamp strong {
+    font: 700 clamp(.875rem, 1.5vw, 1.25rem)/1.25 var(--tw-font-display);
+  }
+
+  & .home-page .tw-discover {
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.65fr);
+    align-items: start;
+    padding-block: clamp(2rem, 5vw, 4rem);
+  }
+
+  & .home-page .tw-discover h2 { font-size: clamp(1.875rem, 3.5vw, 3rem); }
+  & .home-page .tw-destination-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+
+  & .home-page .tw-destination-grid article:nth-child(even) {
+    background: var(--bubble-petal);
+    border-start-end-radius: 3rem;
+    border-end-start-radius: .75rem;
+  }
+
+  & .home-page .tw-destination-grid article:nth-child(odd) {
+    border-start-start-radius: 3rem;
+    border-end-end-radius: .75rem;
+  }
+
+  & .home-page .tw-region-number {
+    display: grid;
+    flex: none;
+    background: var(--bubble-paper);
+    color: var(--bubble-hover);
+    border: 1px solid var(--bubble-control-edge);
+    font: 700 1.125rem/1 var(--tw-font-display);
+    letter-spacing: 0;
+  }
+
+  & .home-page .tw-region-card-head { justify-content: flex-start; gap: .75rem; }
+
+  & .home-page .contact.section {
+    width: min(var(--tw-content-max, 75rem), calc(100% - 2 * var(--tw-page-gutter)));
+    margin: clamp(1.5rem, 4vw, 3rem) auto;
+    padding-block: clamp(2rem, 5vw, 4rem);
+    border: 1px solid var(--line);
+    border-radius: 3rem 1rem 3rem 1rem;
+  }
+
+  & .home-page .contact.section::before,
+  & .home-page .contact.section::after {
+    border: 1px solid var(--bubble-control-edge);
+    opacity: .45;
+    pointer-events: none;
   }
 
   & .tw-destination-grid article,
@@ -966,7 +1100,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   & .profile-carousel-arrow:hover { background: var(--bubble-hover); }
 
   & .age-gate,
-  & .mobile-drawer-backdrop { background: #391a30bd; backdrop-filter: none; }
+  & .mobile-drawer-backdrop { background: color-mix(in srgb, var(--bubble-ink) 74%, transparent); backdrop-filter: none; }
   & .age-card { background: var(--cream); border-color: var(--line); }
   & .age-mark { background: var(--bubble-accent); color: var(--bubble-paper); }
 
@@ -981,15 +1115,24 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   & .site-footer :is(.footer-line, .footer-column a:hover, .footer-city-directory a:hover, .footer-bottom a:hover) { color: var(--bubble-hover); }
   & .site-footer :is(.footer-city-directory, .footer-bottom) { border-top-color: var(--bubble-control-edge); }
 
+  @media (max-width: 960px) {
+    & .home-page .tw-discover { grid-template-columns: minmax(0, 1fr); }
+  }
+
   @media (max-width: 700px) {
-    & .home-page .hero { padding-bottom: 2rem; }
-    & .home-page .hero-photo { margin-block-start: .75rem; }
-    & .home-page .hero-sun::before {
-      inset: auto 8% 0 auto;
-      width: min(68%, 16rem);
-      height: auto;
+    & .home-page .hero { gap: 1.5rem; padding-block: 1.5rem 2rem; }
+    & .home-page .hero h1 { font-size: clamp(2.25rem, 9.7vw, 3.5rem); }
+    & .home-page .hero-showcase {
+      align-self: center;
+      width: min(100%, 25rem);
+      padding-inline: clamp(1.25rem, 8vw, 3rem);
     }
-    & .home-page .hero-sun::after { inset: auto auto 15% 9%; }
+    & .home-page .hero-photo {
+      width: min(100%, 18rem);
+      border-width: .375rem;
+    }
+    & .home-page .tw-destination-grid { grid-template-columns: minmax(0, 1fr); }
+    & .home-page .hero-love-stamp { inset: auto 7% 7% auto; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1000,6 +1143,6 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   @media (prefers-contrast: more) {
     --bubble-control-edge: var(--bubble-hover);
     --bubble-edge: var(--bubble-muted);
-    & .home-page .hero-sun { display: none; }
+    & .home-page :is(.hero-sun, .hero-orbit, .hero-love-stamp) { display: none; }
   }
 }
