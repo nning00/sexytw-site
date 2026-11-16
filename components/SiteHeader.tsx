@@ -4,14 +4,14 @@ import MobileMenu from "@/components/MobileMenu";
 import RegionNav from "@/components/RegionNav";
 import { getSiteSettings } from "@/lib/cms";
 
-export default async function SiteHeader() {
+export default async function SiteHeader({ articleIndex = false }: { articleIndex?: boolean } = {}) {
   const settings = await getSiteSettings();
   return <>
     <header className="site-header article-site-header">
       <MobileMenu />
       <Link className="brand" href="/" aria-label={`${settings.brand.name}首頁`}><BrandMark /><span>{settings.brand.name}</span></Link>
       <nav aria-label="主要選單">
-        <Link href="/#about">{settings.navigation.about}</Link><Link href="/#services">{settings.navigation.services}</Link><Link href="/#gallery">{settings.navigation.gallery}</Link><Link href="/articles">全部文章</Link>
+        <Link href="/#about">{settings.navigation.about}</Link><Link href="/#services">{settings.navigation.services}</Link><Link href="/#gallery">{settings.navigation.gallery}</Link><Link href="/articles" aria-current={articleIndex ? "page" : "location"}>全部文章</Link>
       </nav>
       <a className="nav-cta header-contact-action" href={settings.brand.line_url} target="_blank" rel="noopener noreferrer">{settings.navigation.line_cta}</a>
     </header>

@@ -832,6 +832,9 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     white-space: normal;
   }
 
+  & .home-page .hero-actions .hero-city-link { display: none; }
+  & .home-page #city-directory { scroll-margin-block-start: 1rem; }
+
   & .home-page .hero .adult-note { color: var(--muted); }
 
   /* Editorial cover: artwork is local to the portrait, outside the reading order. */
@@ -1092,6 +1095,13 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   }
 
   & .article-shell { border-top-color: var(--bubble-control-edge); }
+  & .article-site-header nav a[aria-current] {
+    color: var(--bubble-hover);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: .12em;
+    text-underline-offset: .3em;
+  }
   & .article-category-tabs { background: var(--bubble-paper); border-radius: 1rem; }
   & .article-category-tabs a:is(.active, :hover) { background: var(--bubble-accent); color: var(--bubble-paper); }
   & .article-context-links a:hover { background: var(--bubble-petal); border-color: var(--bubble-control-edge); }
@@ -1114,14 +1124,52 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   & .site-footer :is(.footer-about > p, .footer-column a, .footer-city-directory a, .footer-bottom) { color: var(--muted); }
   & .site-footer :is(.footer-line, .footer-column a:hover, .footer-city-directory a:hover, .footer-bottom a:hover) { color: var(--bubble-hover); }
   & .site-footer :is(.footer-city-directory, .footer-bottom) { border-top-color: var(--bubble-control-edge); }
+  & .site-footer .footer-bottom > div { align-items: center; }
+  & .site-footer .footer-bottom > div > a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2rem;
+    padding-inline: .5rem;
+    border-radius: .5rem;
+    text-decoration: underline;
+    text-underline-offset: .2em;
+  }
+
+  @media (min-width: 981px) {
+    & .article-page .article-shell { padding-block-start: 2rem; }
+    & .article-page .article-shell .article-lead { margin-block: 1rem 1.5rem; }
+    & .article-page .article-toc { margin-block-end: 1rem; }
+    & .article-page .article-cover {
+      max-block-size: 16rem;
+      margin-block-end: 1rem;
+    }
+    /* Vinext adds object-fit: cover inline to its fill images. Keep the entire desktop cover. */
+    & .article-page .article-cover img { object-fit: contain !important; }
+  }
 
   @media (max-width: 960px) {
     & .home-page .tw-discover { grid-template-columns: minmax(0, 1fr); }
   }
 
   @media (max-width: 700px) {
-    & .home-page .hero { gap: 1.5rem; padding-block: 1.5rem 2rem; }
+    & .home-page .hero { gap: 1rem; padding-block: 1.5rem; }
     & .home-page .hero h1 { font-size: clamp(2.25rem, 9.7vw, 3.5rem); }
+    & .home-page .hero-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-auto-rows: minmax(0, auto);
+      width: 100%;
+      align-items: stretch;
+    }
+    & .home-page .hero-actions .button.primary { grid-column: 1 / -1; }
+    & .home-page .hero-actions .hero-city-link { display: inline-flex; }
+    & .home-page .hero-actions .hero-text-link {
+      min-inline-size: 0;
+      align-self: stretch;
+      padding-inline: .5rem;
+      overflow-wrap: anywhere;
+    }
+    & .home-page #city-directory { scroll-margin-block-start: 5.5rem; }
     & .home-page .hero-showcase {
       align-self: center;
       width: min(100%, 25rem);
@@ -1133,6 +1181,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     }
     & .home-page .tw-destination-grid { grid-template-columns: minmax(0, 1fr); }
     & .home-page .hero-love-stamp { inset: auto 7% 7% auto; }
+    & .site-footer .footer-bottom > div > a { min-block-size: var(--tw-touch-size); }
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -70,6 +70,7 @@ export default async function Home() {
           <div className="hero-actions">
             <a className="button primary" href={settings.brand.line_url} target="_blank" rel="noopener noreferrer">{settings.homepage.hero_primary_cta}<span aria-hidden="true">↗</span></a>
             <a className="hero-text-link" href="#gallery">瀏覽形象內容 <span aria-hidden="true">↓</span></a>
+            <a className="hero-text-link hero-city-link" href="#city-directory">找城市 <span aria-hidden="true">↓</span></a>
           </div>
           <p className="adult-note">{settings.homepage.adult_note}</p>
         </div>
@@ -112,7 +113,7 @@ export default async function Home() {
         {quickRegions.map((region) => <Link href={region.href} prefetch={false} key={region.href}>{region.name}</Link>)}
       </nav>
 
-      <section className="tw-discover section" aria-labelledby="tw-discover-title">
+      <section className="tw-discover section" id="city-directory" aria-labelledby="tw-discover-title">
         <div><p className="eyebrow">FIND YOUR DESTINATION</p><h2 id="tw-discover-title">搜索想預約的城市</h2><p>依地區快速找到想瀏覽的城市與公開形象資訊。</p></div>
         <div className="tw-destination-grid">{quickRegionSource.map((region, index) => <article data-region={region.slug} key={region.slug}>
           <div className="tw-region-card-head"><span className="tw-region-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><span className="tw-region-count">{region.cities.length} 個城市</span></div>

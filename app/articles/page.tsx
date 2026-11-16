@@ -19,7 +19,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
   ]);
   const title = featured ? "熱門文章" : "全部文章";
   const breadcrumbData = { "@context": "https://schema.org", ...breadcrumbStructuredData([{ name: "首頁", path: "/" }, { name: title, path: "/articles" }]) };
-  return <><SiteHeader /><main className="article-center">
+  return <><SiteHeader articleIndex={!featured} /><main className="article-center">
     <JsonLd data={breadcrumbData} />
     <header>
       <div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><strong>{title}</strong></div>
