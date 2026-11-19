@@ -172,6 +172,7 @@ const commit = process.argv.includes("--commit");
 const verifyOnly = process.argv.includes("--verify-only");
 if (commit || verifyOnly || process.env.PROFILE_SYNC_ENDPOINT || process.env.PROFILE_SYNC_SECRET) {
   const verifiedTarget = await verifySyncTarget(process.env.PROFILE_SYNC_ENDPOINT, process.env.PROFILE_SYNC_SECRET);
+  if(process.argv.includes("--repair-known-drafts")) console.log("Draft repair API version: "+(Number.isSafeInteger(verifiedTarget.draftRepairVersion)?verifiedTarget.draftRepairVersion:0));
   assertPresenceCapability(verifiedTarget, presenceV3);
   console.log("Sync target verified: sexytw.cc / lsxrpubpbnshlqnnddgu / public / sexytw (read-only preflight).");
 }
@@ -191,6 +192,7 @@ if (process.argv.includes("--repair-known-drafts")) {
     await new Promise(resolve => setTimeout(resolve,3000));
   }
   const response = await postPayload({mode:"commit",createOnly:true,repairOnly:true,profiles,capturedAt:new Date().toISOString()},{batch:true});
+  console.log("Scoped repair diagnostics: "+JSON.stringify({...responseDiagnostic(response),summary:safeBatchSummary(response?.summary),repaired:Number.isSafeInteger(response?.result?.repaired)?response.result.repaired:0}));
   if (response?.ok !== true || response.result?.created !== 0 || response.result?.updated !== 0 || !Number.isSafeInteger(response.result?.repaired) || response.result.errors?.length) throw Error("Scoped draft repair incomplete");
   console.log(JSON.stringify({scope:"four-existing-sexytw-drafts",created:0,updated:0,repaired:response.result.repaired,publicationStatus:"unchanged",presenceRun:false}));
   process.exit(0);
