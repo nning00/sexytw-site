@@ -31,9 +31,9 @@ GRANT USAGE ON SCHEMA sexytw_sitemap TO anon,authenticated;
 GRANT SELECT ON sexytw_sitemap.file TO anon,authenticated;
 GRANT EXECUTE ON FUNCTION sexytw_sitemap.policy_fingerprint() TO anon,authenticated;
 DO $$ BEGIN
- IF sexytw_sitemap.policy_fingerprint() IS DISTINCT FROM '3f3203233943354a0ed1d34701da8c9a' THEN RAISE EXCEPTION 'UNREVIEWED_SITEMAP_POLICIES'; END IF;
+ IF sexytw_sitemap.policy_fingerprint() IS DISTINCT FROM 'ab86a6a880983d34b2d79a013c93b55a' THEN RAISE EXCEPTION 'UNREVIEWED_SITEMAP_POLICIES'; END IF;
 END $$;
-INSERT INTO sexytw_sitemap.file(site,approved_policy) VALUES('sexytw','3f3203233943354a0ed1d34701da8c9a');
+INSERT INTO sexytw_sitemap.file(site,approved_policy) VALUES('sexytw','ab86a6a880983d34b2d79a013c93b55a');
 
 CREATE FUNCTION sexytw_sitemap.segment(value text) RETURNS text
 LANGUAGE plpgsql IMMUTABLE STRICT SECURITY INVOKER SET search_path=''

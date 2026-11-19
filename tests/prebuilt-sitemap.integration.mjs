@@ -17,9 +17,9 @@ const ddl=readFileSync(new URL('../prebuilt-sitemap.review.sql',import.meta.url)
 const fingerprintQuery=ddl.match(/AS \$\$\n (SELECT md5\([\s\S]+?);\n\$\$;/)[1];
 // Fixture roles have different OIDs. Substitute only the reviewed policy digest,
 // never remove the initial policy assertion or policy/trigger-drift read gates.
-const fixtureFingerprint=await db.sql(fingerprintQuery);
+const fixtureFingerprint=await db.sql("SET search_path='';"+fingerprintQuery);
 assert.match(fixtureFingerprint,/^[a-f0-9]{32}$/);
-await db.sql(ddl.replaceAll('3f3203233943354a0ed1d34701da8c9a',fixtureFingerprint));
+await db.sql(ddl.replaceAll('ab86a6a880983d34b2d79a013c93b55a',fixtureFingerprint));
 const file=async(role='anon')=>JSON.parse(await db.sql(`SET ROLE ${role};SELECT public.sexytw_sitemap_file_v1(false);`));
 const meta=async()=>JSON.parse(await db.sql('SET ROLE anon;SELECT public.sexytw_sitemap_file_v1();'));
 test('persisted XML contains every public profile, all four regions and no private fields/status',async()=>{
