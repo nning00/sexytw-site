@@ -14,6 +14,11 @@ on:
         description: Exact verified current Cloudflare deployment ID
         required: true
         type: string
+      reviewed_failed_run:
+        description: Optional operator acknowledgement of reviewed unactivated run 44497061901
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
   actions: read
@@ -63,6 +68,7 @@ jobs:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           EXPECTED_PREVIOUS_VERSION: ${{ inputs.expected_previous_version }}
           EXPECTED_PREVIOUS_DEPLOYMENT: ${{ inputs.expected_previous_deployment }}
+          REVIEWED_FAILED_RUN: ${{ inputs.reviewed_failed_run }}
           CI: 'true'
           GH_TOKEN: ${{ github.token }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
