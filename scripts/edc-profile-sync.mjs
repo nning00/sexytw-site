@@ -6,6 +6,7 @@ import { collectCatalog } from "../lib/edc-catalog.mjs";
 import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
 import { recoveryMode, syncBatchPayload, shouldFinalize } from "../lib/profile-sync-recovery.mjs";
 import { assertPresenceCapability } from "../lib/presence-capability.mjs";
+import { postSyncRequest } from "../lib/sync-post-transport.mjs";
 const presenceV3 = process.argv.includes("--presence-v3");
 const upsertOnly = recoveryMode(process.argv) || presenceV3;
 
@@ -156,12 +157,10 @@ async function postPayload(payload, options) {
   const secret = process.env.PROFILE_SYNC_SECRET;
   if (!endpoint || !secret) return null;
   assertSyncEndpoint(endpoint);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    redirect: "error",
-    signal: AbortSignal.timeout(120000),
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
+  const response = await postSyncRequest(endpoint, {
+    secret,
     body: JSON.stringify(payload),
+    onRetry: diagnostic => console.warn("連線尚未送出HTTP；低頻重試：" + JSON.stringify(diagnostic)),
   });
   return readSyncResponse(response, options);
 }
