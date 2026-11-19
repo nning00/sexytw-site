@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {readSyncResponse,responseDiagnostic,errorCategories,SafeSyncResponseError,safeFailure,safeBatchSummary} from '../lib/sync-response-diagnostics.mjs';
-const source=readFileSync(new URL('./edc-profile-sync.mjs',import.meta.url),'utf8');
+const source=readFileSync(new URL('./edc-profile-sync.mjs',import.meta.url),'utf8').replace(/\r\n/g,'\n');
 const chunkCode=source.slice(source.indexOf('  async function syncChunk('),source.indexOf('  // Three small requests'));
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const canary='SECRET_CANARY_SQL_URL_NAME_TOKEN';
@@ -30,7 +30,7 @@ test('invalid 2xx nonJSON, scalar, array, missing summary and missing errors fai
 });
 test('valid success preserves accounting, no raw summary output',async()=>{
  const x=await run(JSON.stringify({ok:true,summary:{unchanged:1,pendingReview:2,skippedCity:0,private:canary},result:{created:2,updated:0,errors:[]}}),200);
- assert.deepEqual(x.result,{create:2,update:0,unchanged:1,pendingReview:2,skippedCity:0,warnings:0,errors:0});assert.equal(x.calls,1);assert(!x.logs.includes(canary));
+ assert.deepEqual(x.result,{create:2,update:0,repaired:0,unchanged:1,pendingReview:2,skippedCity:0,warnings:0,errors:0});assert.equal(x.calls,1);assert(!x.logs.includes(canary));
 });
 test('HTTP failure and transport exception never output raw data',async()=>{
  const x=await run(JSON.stringify({error:canary}),500);assert.equal(x.result.errors,3);assert(!x.logs.includes(canary));assert.equal(safeFailure(new Error(canary)),'sync-request-failed');
