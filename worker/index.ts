@@ -4,6 +4,7 @@ import { getOriginalFetch } from "vinext/shims/fetch-cache";
 import { applyArticleCanonical } from "../lib/article-canonical.mjs";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
 import { withPublicReadScope } from "../lib/public-read-scope.mjs";
+import { sitemapUnavailableResponse } from "../lib/live-sitemap.mjs";
 
 const worker = {
   async scheduled(controller: ScheduledController, env: Cloudflare.Env) {
@@ -36,10 +37,20 @@ const worker = {
 
     const publicHome = request.method === "GET" && requestUrl.pathname === "/";
     const visibilityPath = isProfileVisibilityPath(requestUrl.pathname);
-    const rendered = (publicHome || visibilityPath)
-      ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
-      : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
+    let rendered;
+    try {
+      rendered = (publicHome || visibilityPath)
+        ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
+        : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
+    } catch (error) {
+      if (requestUrl.pathname !== "/sitemap.xml") throw error;
+      return sitemapUnavailableResponse(request.method);
+    }
     const response = rendered.response;
+    if (requestUrl.pathname === "/sitemap.xml" && response.status >= 500) {
+      await response.body?.cancel().catch(() => {});
+      return sitemapUnavailableResponse(request.method);
+    }
     const securedResponse = new Response(response.body, response);
     // Aggregate timings only; no query text, identifiers, credentials or user data.
     if (rendered.serverTiming && !request.headers.has("authorization") && !request.headers.has("cookie") && response.ok) {

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';import {readFileSync} from 'node:fs';
 import {withPublicReadScope,publicReadOnce} from '../lib/public-read-scope.mjs';
 import {isProfileVisibilityPath,applyProfileNoStore} from '../lib/profile-visibility-cache.mjs';
-import * as cache from '../node_modules/vinext/dist/shims/cache.js';
+import {readLiveSitemap} from '../lib/live-sitemap.mjs';
+import * as cache from 'vinext/shims/cache';
 cache.setDataCacheHandler(new cache.MemoryCacheHandler());
 let rows=[{id:'a',slug:'fixture-a',status:'published',adult_review_status:'verified',source_missing_at:null,profile_images:[]},{id:'b',slug:'fixture-b',status:'published',adult_review_status:'verified',source_missing_at:null,profile_images:[]},{id:'c',slug:'fixture-c',status:'archived',adult_review_status:'verified',source_missing_at:null},{id:'d',slug:'fixture-d',status:'published',adult_review_status:'pending',source_missing_at:null}];
 let queryCount=0;
@@ -16,7 +17,8 @@ async function visible(expected){assert.deepEqual((await cms.getPublishedProfile
 await visible(['a','b']);rows[0].source_missing_at='2026-11-13T00:00:00Z';
 for(const instance of instances){cms=instance;await visible(['b']);} // no invalidation broadcast needed
 cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['b']);
-const sitemap=compile('../app/sitemap.ts',{'@/data/regions':{regions:[]},'@/data/articles':{articles:[]},'@/data/profiles':{profileExamples:[]},'@/lib/supabase/public':{createPublicClient:client},'@/lib/cms':{...cms,getPublishedArticles:async()=>[],getArticleCategories:async()=>[],getContentSettings:async()=>({services:[]})}}).default;
+const sitemapClient=options=>{assert.equal(options.noStore,true);return{rpc(name){assert.equal(name,'sexytw_public_sitemap_v1');return{abortSignal:async()=>({error:null,data:{site:'sexytw',version:1,profiles:rows.filter(r=>r.status==='published'&&r.adult_review_status==='verified'&&!r.source_missing_at).map(r=>({slug:r.slug})),articles:[],cities:[],categories:[],services:[]}})}}}};
+const sitemap=compile('../app/sitemap.ts',{'@/lib/supabase/public':{createPublicClient:sitemapClient},'@/lib/live-sitemap.mjs':{readLiveSitemap}}).default;
 assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),false);
 rows[0].source_missing_at=null;for(const instance of instances){cms=instance;await visible(['a','b']);}cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['a','b']);assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),true);
 assert.equal(await cms.getPublishedProfile('fixture-c'),null);assert.equal(await cms.getPublishedProfile('fixture-d'),null);

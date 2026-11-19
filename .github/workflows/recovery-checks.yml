@@ -44,6 +44,14 @@ jobs:
           PGDATABASE: sexytw_fixture
           PGUSER: fixture_admin
           PGPASSWORD: fixture-only-not-production
+      - name: Live Sitemap visibility and RLS integration (synthetic only)
+        run: node --test tests/live-sitemap.integration.mjs
+        env:
+          PGHOST: '127.0.0.1'
+          PGPORT: '55514'
+          PGDATABASE: sexytw_fixture
+          PGUSER: fixture_admin
+          PGPASSWORD: fixture-only-not-production
       - name: Build without deployment
         run: pnpm build
         env:
