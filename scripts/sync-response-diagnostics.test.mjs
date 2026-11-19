@@ -76,3 +76,11 @@ test('summary allowlist and transport categories cannot leak inputs',()=>{
  const e=new Error(canary);e.name='TimeoutError';assert.equal(safeFailure(e),'sync-timeout-or-abort');
  assert.equal(safeFailure(new TypeError(canary)),'sync-network-or-request-error');
 });
+
+test('repair transport diagnostics stay fixed-category and never echo details',()=>{
+ const messages=['image-network-or-timeout','image-redirect-rejected','image-url-invalid','draft-repair-upload-failed'];
+ const counts=errorCategories(messages.map(message=>({message})));
+ for(const key of ['image_network_or_timeout','image_redirect_rejected','image_url_invalid','draft_repair_upload_failed'])assert.equal(counts[key],1);
+ assert.equal(errorCategories(messages.map(message=>({message:message+canary}))).unknown,4);
+ assert(!JSON.stringify(counts).includes(canary));
+});

@@ -6,10 +6,22 @@ const url='https://edc.com.tw/test.webp';
 test('temporary 5xx retries bounded reads, with redirect and timeout protection',async()=>{
  let calls=0;const waits=[];
  const file=await downloadSourceImage(url,{pause:async ms=>waits.push(ms),fetcher:async(u,opts)=>{
-  assert.equal(u,url);assert.equal(opts.redirect,'error');assert(opts.signal);calls++;
+  assert.equal(u,url);assert.equal(opts.redirect,'manual');assert(opts.signal);calls++;
   return calls<3?new Response(null,{status:525}):new Response('fixture',{headers:{'content-type':'image/webp'}});
  }});
  assert.equal(calls,3);assert.deepEqual(waits,[3000,6000]);assert.equal(file.extension,'webp');
+});
+
+test('every redirect is rejected without retry or following Location',async()=>{
+ for(const status of [300,301,302,303,304,307,308,399]){
+  let calls=0,cancelled=false;
+  const body=status===304?null:new ReadableStream({cancel(){cancelled=true;}});
+  await assert.rejects(downloadSourceImage(url,{pause:async()=>assert.fail(),fetcher:async(u,opts)=>{
+   calls++;assert.equal(u,url);assert.equal(opts.redirect,'manual');
+   return new Response(body,{status,headers:{location:'https://untrusted.invalid/private'}});
+  }}),/image-redirect-rejected/);
+  assert.equal(calls,1);if(body)assert.equal(cancelled,true);
+ }
 });
 test('denied, missing and rate-limited images are never retried or bypassed',async()=>{
  for(const status of [401,403,404,429]){let calls=0;await assert.rejects(downloadSourceImage(url,{pause:async()=>assert.fail(),fetcher:async()=>{calls++;return new Response(null,{status});}}),new RegExp(`image-download-${status}`));assert.equal(calls,1);}
