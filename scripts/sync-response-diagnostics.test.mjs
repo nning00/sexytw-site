@@ -2,7 +2,7 @@ import test from 'node:test';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {readSyncResponse,responseDiagnostic,errorCategories,SafeSyncResponseError,safeFailure,safeBatchSummary} from '../lib/sync-response-diagnostics.mjs';
+import {readSyncResponse,responseDiagnostic,errorCategories,SafeSyncResponseError,SafeSyncTransportError,safeFailure,safeBatchSummary} from '../lib/sync-response-diagnostics.mjs';
 const source=readFileSync(new URL('./edc-profile-sync.mjs',import.meta.url),'utf8').replace(/\r\n/g,'\n');
 const chunkCode=source.slice(source.indexOf('  async function syncChunk('),source.indexOf('  // Three small requests'));
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
@@ -83,4 +83,18 @@ test('repair transport diagnostics stay fixed-category and never echo details',(
  for(const key of ['image_network_or_timeout','image_redirect_rejected','image_url_invalid','draft_repair_upload_failed'])assert.equal(counts[key],1);
  assert.equal(errorCategories(messages.map(message=>({message:message+canary}))).unknown,4);
  assert(!JSON.stringify(counts).includes(canary));
+});
+
+test('actual scheduler: uncertain transport delivery preserves batch error and blocks presence/cleanup',async()=>{
+ const {shouldFinalize,syncBatchPayload}=await import('../lib/profile-sync-recovery.mjs');
+ const code=source.slice(source.indexOf('  const chunks = [];'),source.lastIndexOf('\n} else {'));
+ let calls=0,finalizers=0;const logs=[];
+ const console=Object.fromEntries(['log','warn','error'].map(k=>[k,(...v)=>logs.push(v.join(' '))]));
+ const fn=new AsyncFunction('profiles','postPayload','syncBatchPayload','commit','capturedAt','upsertOnly','presenceV3','selectedCity','limit','catalogue','console','responseDiagnostic','errorCategories','SafeSyncResponseError','safeFailure','shouldFinalize','finishSnapshot','setTimeout','safeBatchSummary',code);
+ await assert.rejects(fn(Array.from({length:3},()=>({})),async payload=>{
+   assert.equal(payload.profiles.length,3);assert(!payload.presenceSnapshot);calls++;
+   throw new SafeSyncTransportError({code:'ECONNRESET',phase:'request',sent:true,attempt:1,elapsedMs:12});
+ },syncBatchPayload,true,'synthetic',true,true,'',0,{},console,responseDiagnostic,errorCategories,SafeSyncResponseError,safeFailure,shouldFinalize,async()=>{finalizers++;},cb=>cb(),safeBatchSummary),/3/);
+ assert.equal(calls,1);assert.equal(finalizers,0);assert(logs.join('\n').includes('"errors": 3'));
+ assert(logs.join('\n').includes('"sent":true'));
 });
