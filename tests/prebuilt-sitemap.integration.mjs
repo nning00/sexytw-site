@@ -20,8 +20,10 @@ const fingerprintQuery=ddl.match(/AS \$\$\n (SELECT md5\([\s\S]+?);\n\$\$;/)[1];
 const fixtureFingerprint=await db.sql("SET search_path='';"+fingerprintQuery);
 assert.match(fixtureFingerprint,/^[a-f0-9]{32}$/);
 await db.sql(ddl.replaceAll('ab86a6a880983d34b2d79a013c93b55a',fixtureFingerprint));
-const file=async(role='anon')=>JSON.parse(await db.sql(`SET ROLE ${role};SELECT public.sexytw_sitemap_file_v1(false);`));
-const meta=async()=>JSON.parse(await db.sql('SET ROLE anon;SELECT public.sexytw_sitemap_file_v1();'));
+// psql -At represents SQL NULL as empty text; REST represents it as JSON null.
+const parseSqlJson=value=>JSON.parse(value||'null');
+const file=async(role='anon')=>parseSqlJson(await db.sql(`SET ROLE ${role};SELECT public.sexytw_sitemap_file_v1(false);`));
+const meta=async()=>parseSqlJson(await db.sql('SET ROLE anon;SELECT public.sexytw_sitemap_file_v1();'));
 test('persisted XML contains every public profile, all four regions and no private fields/status',async()=>{
  for(const role of ['anon','authenticated']){const data=await file(role);assert(data);assert.equal(data.urls,1416);assert.equal((data.xml.match(/<url>/g)||[]).length,1416);assert.equal(data.bytes,Buffer.byteLength(data.xml));assert(!data.xml.includes('SECRET'));assert(!data.xml.includes('hidden-'));assert(!data.xml.includes('article-draft'));assert(!data.xml.includes('/regions/empty-region<'));for(const slug of ['north','central','south','east-islands'])assert(data.xml.includes('<loc>https://sexytw.cc/regions/'+slug+'</loc>'));}
  const m=await meta();assert.equal(m.xml,null);assert.equal(m.urls,1416);
@@ -30,7 +32,8 @@ test('committed unpublish/missing/adult revoke/delete remove immediately, reappe
  const before=await meta();
  await db.sql("UPDATE public.profiles SET status='draft' WHERE slug='visible-1';UPDATE public.profiles SET source_missing_at=now() WHERE slug='visible-2';UPDATE public.profiles SET adult_review_status='pending' WHERE slug='visible-3';DELETE FROM public.profiles WHERE slug='visible-4';UPDATE public.articles SET status='draft' WHERE slug='article-public';");
  const after=await file();assert.notEqual(after.revision,before.revision);for(const slug of ['visible-1','visible-2','visible-3','visible-4'])assert(!after.xml.includes('/profiles/'+slug+'</loc>'));assert.equal(after.urls,1411);
- assert.equal(JSON.parse(await db.sql(`SET ROLE anon;SELECT public.sexytw_sitemap_file_v1(false,'${before.revision}');`)),null);
+ const conditional=JSON.parse(await db.sql(`SET ROLE anon;SELECT public.sexytw_sitemap_file_v1(false,'${before.revision}');`));assert.equal(conditional.revision,after.revision);assert.equal(conditional.xml,after.xml);
+ assert.equal(JSON.parse(await db.sql(`SET ROLE anon;SELECT public.sexytw_sitemap_file_v1(false,'${after.revision}');`)).xml,null);
  await db.sql("UPDATE public.profiles SET source_missing_at=null WHERE slug='visible-2';");assert((await file()).xml.includes('/profiles/visible-2</loc>'));
 });
 test('parent/last-city withdrawal removes overview and affected cities in the same transaction',async()=>{

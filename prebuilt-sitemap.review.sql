@@ -98,13 +98,12 @@ SELECT sexytw_sitemap.rebuild();
 
 -- One indexed row read for the live safety gate. XML is only read on a cache
 -- miss, never regenerated here. No user-supplied SQL/URL/role or content writes.
-CREATE FUNCTION public.sexytw_sitemap_file_v1(metadata_only boolean DEFAULT true,expected_revision text DEFAULT NULL)
+CREATE FUNCTION public.sexytw_sitemap_file_v1(metadata_only boolean DEFAULT true,known_revision text DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY INVOKER SET search_path=''
 AS $$
- SELECT jsonb_build_object('site','sexytw','version',1,'revision',generation::text||'-'||revision::text,'urls',url_count,'bytes',byte_count,'generated_at',generated_at,'xml',CASE WHEN metadata_only THEN NULL ELSE xml END)
+ SELECT jsonb_build_object('site','sexytw','version',1,'revision',generation::text||'-'||revision::text,'urls',url_count,'bytes',byte_count,'generated_at',generated_at,'xml',CASE WHEN metadata_only OR known_revision=generation::text||'-'||revision::text THEN NULL ELSE xml END)
  FROM sexytw_sitemap.file
  WHERE site='sexytw' AND valid
- AND (expected_revision IS NULL OR expected_revision=generation::text||'-'||revision::text)
  AND approved_policy=sexytw_sitemap.policy_fingerprint()
  AND (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('profiles','articles','regions','cities','article_categories','site_settings') AND ((t.tgname='sexytw_sitemap_lock' AND t.tgfoid='sexytw_sitemap.source_lock()'::regprocedure AND t.tgtype=62) OR (t.tgname='sexytw_sitemap_refresh' AND t.tgfoid='sexytw_sitemap.source_refresh()'::regprocedure AND t.tgtype=60)) AND t.tgenabled='A' AND t.tgqual IS NULL AND t.tgnargs=0 AND NOT t.tgisinternal)=12;
 $$;
