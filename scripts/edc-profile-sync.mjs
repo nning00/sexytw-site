@@ -179,6 +179,22 @@ if (verifyOnly) {
   console.log("Verification completed; no source crawl, profile write or snapshot cleanup was performed.");
   process.exit(0);
 }
+if (process.argv.includes("--repair-known-drafts")) {
+  if (!commit || presenceV3) throw Error("Explicit scoped repair required; never run presence or full import here.");
+  const profiles = [];
+  // Only the four drafts independently identified in the failed runs / DB.
+  for (const id of ["693748", "694088", "696547", "701464"]) {
+    const {data} = await fetchJson(`${sourceApi}/${id}`);
+    const profile = normalizeProduct(data);
+    if (!profile || profile.sourceKey !== id) throw Error("Scoped source identity invalid");
+    profiles.push(profile);
+    await new Promise(resolve => setTimeout(resolve,3000));
+  }
+  const response = await postPayload({mode:"commit",createOnly:true,repairOnly:true,profiles,capturedAt:new Date().toISOString()},{batch:true});
+  if (response?.ok !== true || response.result?.created !== 0 || response.result?.updated !== 0 || !Number.isSafeInteger(response.result?.repaired) || response.result.errors?.length) throw Error("Scoped draft repair incomplete");
+  console.log(JSON.stringify({scope:"four-existing-sexytw-drafts",created:0,updated:0,repaired:response.result.repaired,publicationStatus:"unchanged",presenceRun:false}));
+  process.exit(0);
+}
 const selectedCity = argValue("--city") || "";
 const limit = Math.max(Number(argValue("--limit") || "0"), 0);
 if (selectedCity && !knownCities.has(selectedCity)) throw new Error(`不支援的城市：${selectedCity}`);
@@ -202,7 +218,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
   for (let index = 0; index < profiles.length; index += batchSize) {
     chunks.push(profiles.slice(index, index + batchSize));
   }
-  const totals = { create: 0, update: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: 0 };
+  const totals = { create: 0, update: 0, repaired: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: 0 };
   async function syncChunk(chunk, index) {
     let response;
     let succeeded = false;
@@ -229,7 +245,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     const responseErrors = response?.result?.errors || [];
     const warningErrors = responseErrors.filter((item) => !upsertOnly && item?.message === "image-download-404");
     const blockingErrors = responseErrors.filter((item) => upsertOnly || item?.message !== "image-download-404");
-    console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify({ ...responseDiagnostic(response), summary: safeBatchSummary(response.summary) })}`);
+    console.log(`批次 ${index + 1}/${chunks.length}：${JSON.stringify({ ...responseDiagnostic(response), summary: safeBatchSummary(response.summary), repaired: Number.isSafeInteger(response.result?.repaired) ? response.result.repaired : 0 })}`);
     if (warningErrors.length) {
       console.warn(`批次警告（來源圖片不存在，已跳過）：${JSON.stringify(errorCategories(warningErrors))}`);
     }
@@ -239,6 +255,7 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
     return {
       create: (upsertOnly ? response?.result?.created : response?.summary?.create) || 0,
       update: (upsertOnly ? response?.result?.updated : response?.summary?.update) || 0,
+      repaired: response?.result?.repaired || 0,
       unchanged: response?.summary?.unchanged || 0,
       pendingReview: response?.summary?.pendingReview || 0,
       skippedCity: response?.summary?.skippedCity || 0,

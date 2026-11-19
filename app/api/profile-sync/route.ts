@@ -8,6 +8,8 @@ import { assertSyncEnvironment, syncTarget } from "@/lib/profile-sync-target.mjs
 import { changedFields, finalizeSnapshot } from "@/lib/profile-sync-snapshot.mjs";
 
 import { reconcilePresence } from "@/lib/profile-presence-v3.mjs";
+import { downloadSourceImage, prefetchSourceImages } from "@/lib/source-image-download.mjs";
+import { repairIncompleteDraft } from "@/lib/repair-incomplete-draft.mjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,6 +51,7 @@ type SyncBody = {
   deferRevalidation?: boolean;
   finalizeSnapshot?: boolean;
   createOnly?: boolean;
+  repairOnly?: boolean;
   snapshotSourceKeys?: string[];
   snapshotProof?: { complete: boolean; sourceTotal: number; sourcePages: number; pagesFetched: number; rawCount: number; importErrors?: number; importWarnings?: number };
   cleanupCursor?: string | null;
@@ -150,23 +153,10 @@ function fileExtension(contentType: string | null, sourceUrl: string) {
 }
 
 async function downloadImage(url: string) {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "image/avif,image/webp,image/png,image/jpeg",
-      Referer: `${SOURCE_ORIGIN}/`,
-      "User-Agent": "AuthorizedProfileSync/1.0",
-    },
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`image-download-${response.status}`);
-  const contentType = response.headers.get("content-type");
-  if (!contentType?.startsWith("image/")) throw new Error("image-content-type-invalid");
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) throw new Error("image-size-invalid");
-  return { bytes, contentType, extension: fileExtension(contentType, url) };
+  return downloadSourceImage(url);
 }
 
-async function syncImages(profileId: string, displayName: string, images: SourceImage[], createOnly = false) {
+async function syncImages(profileId: string, displayName: string, images: SourceImage[], createOnly = false, prefetched?: Awaited<ReturnType<typeof prefetchSourceImages>>) {
   const supabase = createAdminClient();
   const { data: trackedRows, error: trackedError } = await supabase
     .from("profile_source_images")
@@ -194,7 +184,7 @@ async function syncImages(profileId: string, displayName: string, images: Source
   for (const [index, image] of images.entries()) {
     let storagePath = tracked.get(image.url);
     if (!storagePath) {
-      const downloaded = await downloadImage(image.url);
+      const downloaded = prefetched?.get(image.url) ?? await downloadImage(image.url);
       const imageHash = createHash("sha256").update(image.url).digest("hex").slice(0, 24);
       storagePath = scopedMediaPath(`profiles/synced/${profileId}/${imageHash}.${downloaded.extension}`);
       const { error: uploadError } = await supabase.storage.from("site-media").upload(storagePath, downloaded.bytes, {
@@ -274,7 +264,7 @@ export async function GET(request: Request) {
     }
     const { error: cleanupError } = recovery ? { error: null } : await client.rpc("sexytw_media_cleanup_batch");
     if (cleanupError) return NextResponse.json({ error: "Sync maintenance database setup incomplete" }, { status: 503, headers });
-    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, presenceVersion, presenceSchemaReady, target: syncTarget }, { headers });
+    return NextResponse.json({ ok: true, databaseReachable: true, snapshotCleanupVersion: 2, createOnlyVersion: 1, draftRepairVersion: 1, presenceVersion, presenceSchemaReady, target: syncTarget }, { headers });
   } catch {
     return NextResponse.json({ error: "Sync target verification failed" }, { status: 503, headers });
   }
@@ -339,7 +329,7 @@ export async function POST(request: Request) {
   }
   let existingQuery = supabase
     .from("profiles")
-    .select("id,source_key,source_content_hash,status,slug,adult_review_status,adult_verified_at,adult_verified_by,introduction,seo_title,seo_description")
+    .select("id,source_key,source_url,source_content_hash,status,slug,adult_review_status,adult_verified_at,adult_verified_by,introduction,seo_title,seo_description,created_at,updated_at,card_image_path")
     .eq("source_provider", PROVIDER);
   // Normal sync requests contain only a few records. Querying every imported
   // profile for every batch wastes Worker CPU and database bandwidth.
@@ -354,6 +344,10 @@ export async function POST(request: Request) {
   if (cityError || existingError) return NextResponse.json({ error: cityError?.message || existingError?.message }, { status: 500 });
   const cityByName = new Map((cities ?? []).map((city) => [city.name, city]));
   const existingByKey = new Map((existing ?? []).map((profile) => [profile.source_key, profile]));
+  if (body.repairOnly && (!body.createOnly || normalizedProfiles.length !== body.profiles.length || normalizedProfiles.some(profile => {
+    const current = existingByKey.get(profile.sourceKey);
+    return !current || current.status !== "draft" || !/^(?:create-only|repaired-draft):[0-9a-f-]{36}$/.test(current.source_content_hash || "");
+  }))) return NextResponse.json({error:"Repair-only refuses new or non-draft profiles"},{status:409});
   const preview = normalizedProfiles.map((profile) => {
     const current = existingByKey.get(profile.sourceKey);
     const city = cityByName.get(profile.cityName);
@@ -383,14 +377,17 @@ export async function POST(request: Request) {
   };
   if (mode === "preview") return NextResponse.json({ ok: true, mode, summary, items: preview });
 
-  const result = { created: 0, updated: 0, unchanged: 0, skipped: invalidCount, archived: 0, errors: [] as Array<{ sourceKey: string; message: string }> };
+  const result = { created: 0, updated: 0, repaired: 0, unchanged: 0, skipped: invalidCount, archived: 0, errors: [] as Array<{ sourceKey: string; message: string }> };
   for (const profile of normalizedProfiles) {
     const city = cityByName.get(profile.cityName);
     if (!city) { result.skipped += 1; continue; }
     try {
       const current = existingByKey.get(profile.sourceKey);
       if (body.createOnly && current) {
-        if(current.source_content_hash?.startsWith("create-only:")) result.errors.push({sourceKey:profile.sourceKey,message:"incomplete-new-draft-requires-review"});
+        if(current.source_content_hash?.startsWith("create-only:")) {
+          await repairIncompleteDraft(supabase, current, profile);
+          result.repaired += 1;
+        }
         result.skipped += 1; continue;
       }
       const reviewStatus = profile.verifiedAdult
@@ -439,6 +436,9 @@ export async function POST(request: Request) {
         adult_verified_at: reviewStatus === "verified" ? current?.adult_verified_at || capturedAt : null,
         adult_verified_by: current?.adult_verified_by || null,
       };
+      // Check all source images BEFORE inserting a new draft. A source 5xx
+      // cannot leave another forever-blocking, image-less row behind.
+      const prefetched = body.createOnly ? await prefetchSourceImages(profile.images) : undefined;
       const save = current
         ? await supabase.from("profiles").update(payload).eq("id", current.id).select("id,updated_at").single()
         : await supabase.from("profiles").insert(payload).select("id,updated_at").single();
@@ -448,7 +448,7 @@ export async function POST(request: Request) {
       if (assignmentDeleteError) throw assignmentDeleteError;
       const { error: assignmentError } = await supabase.from("profile_cities").insert({ profile_id: profileId, city_id: city.id });
       if (assignmentError) throw assignmentError;
-      const {coverPath,proof} = await syncImages(profileId, profile.displayName, profile.images, body.createOnly);
+      const {coverPath,proof} = await syncImages(profileId, profile.displayName, profile.images, body.createOnly, prefetched);
       if (body.createOnly) {
         const {error: completeError} = await supabase.rpc("sexytw_complete_new_profile", {
           p_id:profileId,p_marker:payload.source_content_hash,p_expected_updated_at:save.data.updated_at,
