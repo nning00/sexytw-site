@@ -96,6 +96,20 @@ DO $$ DECLARE table_name text; BEGIN
 END $$;
 SELECT sexytw_sitemap.rebuild();
 
+CREATE FUNCTION sexytw_sitemap.triggers_current() RETURNS boolean
+LANGUAGE sql STABLE SECURITY INVOKER SET search_path=''
+AS $$
+ SELECT count(*)=12 FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='public' AND c.relname IN ('profiles','articles','regions','cities','article_categories','site_settings')
+ AND ((t.tgname='sexytw_sitemap_lock' AND t.tgfoid='sexytw_sitemap.source_lock()'::regprocedure AND t.tgtype=62) OR (t.tgname='sexytw_sitemap_refresh' AND t.tgfoid='sexytw_sitemap.source_refresh()'::regprocedure AND t.tgtype=60))
+ AND t.tgenabled='A' AND t.tgqual IS NULL AND t.tgnargs=0 AND NOT t.tgisinternal;
+$$;
+REVOKE ALL ON FUNCTION sexytw_sitemap.triggers_current() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION sexytw_sitemap.triggers_current() TO anon,authenticated;
+-- Defense in depth for any future direct/GraphQL exposure of this schema:
+-- table RLS enforces the same live guard as the public RPC, not only valid=true.
+ALTER POLICY public_file_read ON sexytw_sitemap.file USING(site='sexytw' AND valid AND approved_policy=sexytw_sitemap.policy_fingerprint() AND sexytw_sitemap.triggers_current());
+
 -- One indexed row read for the live safety gate. XML is only read on a cache
 -- miss, never regenerated here. No user-supplied SQL/URL/role or content writes.
 CREATE FUNCTION public.sexytw_sitemap_file_v1(metadata_only boolean DEFAULT true,known_revision text DEFAULT NULL)
@@ -105,7 +119,7 @@ AS $$
  FROM sexytw_sitemap.file
  WHERE site='sexytw' AND valid
  AND approved_policy=sexytw_sitemap.policy_fingerprint()
- AND (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('profiles','articles','regions','cities','article_categories','site_settings') AND ((t.tgname='sexytw_sitemap_lock' AND t.tgfoid='sexytw_sitemap.source_lock()'::regprocedure AND t.tgtype=62) OR (t.tgname='sexytw_sitemap_refresh' AND t.tgfoid='sexytw_sitemap.source_refresh()'::regprocedure AND t.tgtype=60)) AND t.tgenabled='A' AND t.tgqual IS NULL AND t.tgnargs=0 AND NOT t.tgisinternal)=12;
+ AND sexytw_sitemap.triggers_current();
 $$;
 REVOKE ALL ON FUNCTION public.sexytw_sitemap_file_v1(boolean,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.sexytw_sitemap_file_v1(boolean,text) TO anon,authenticated;

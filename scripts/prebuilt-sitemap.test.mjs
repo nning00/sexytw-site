@@ -13,7 +13,7 @@ test('MISS reads persisted XML and queues only public version-keyed cache, no au
  for(const call of h.calls){assert.equal(call.options.redirect,'manual');assert.equal(call.options.cache,'no-store');assert.deepEqual(Object.keys(call.options.headers).sort(),['Accept','Accept-Profile','apikey']);assert.equal(call.options.headers.apikey,'sb_publishable_fixture');}
  await Promise.all(h.pending);assert.equal(h.puts.length,1);assert(h.puts[0].key.endsWith('/current.xml'));assert.equal(h.puts[0].response.headers.get('X-Sexytw-Sitemap-Revision'),revision);assert.equal(h.puts[0].response.headers.get('Set-Cookie'),null);assert.equal(r.headers.get('Cache-Control'),'private, no-store, max-age=0');
 });
-test('HIT always checks live revision before reading edge cache and never loads XML from DB',async()=>{
+test('HIT checks live revision before serving edge cache and never loads XML from DB',async()=>{
  const h=harness([{...meta,xml:null}]);h.cache.match=async()=>new Response(xml,{headers:{'Content-Type':'application/xml; charset=utf-8','X-Sexytw-Sitemap-Revision':revision}});
  const r=await prebuiltSitemapResponse(request(),env,h);assert.equal(r.status,200);assert.equal(await r.text(),xml);assert.equal(h.calls.length,1);assert(h.calls[0].url.includes('known_revision='+revision));assert.equal(r.headers.get('X-Sexytw-Sitemap-Cache'),'HIT');
 });

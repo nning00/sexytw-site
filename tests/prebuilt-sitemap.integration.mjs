@@ -65,11 +65,13 @@ test('ordinary API roles cannot mutate snapshot, invoke builder/locks or read in
 });
 test('policy drift fails closed immediately, including after ordinary content refresh',async()=>{
  await db.sql("CREATE POLICY sitemap_drift ON public.profiles AS RESTRICTIVE FOR SELECT TO anon USING(slug<>'visible-9');");assert.equal(await meta(),null);
+ assert.equal(await db.sql('SET ROLE anon;SELECT count(*) FROM sexytw_sitemap.file;'),'0');
  await db.sql("UPDATE public.profiles SET updated_at=now() WHERE slug='visible-10';");assert.equal(await meta(),null);
  await db.sql('DROP POLICY sitemap_drift ON public.profiles;UPDATE public.profiles SET source_key=source_key WHERE false;');assert(await meta());
 });
 test('disabled or missing invalidation triggers cannot serve a stale persisted file',async()=>{
  await db.sql('ALTER TABLE public.profiles DISABLE TRIGGER sexytw_sitemap_refresh;');assert.equal(await meta(),null);
+ assert.equal(await db.sql('SET ROLE anon;SELECT count(*) FROM sexytw_sitemap.file;'),'0');
  await db.sql('ALTER TABLE public.profiles ENABLE ALWAYS TRIGGER sexytw_sitemap_refresh;');assert(await meta());
 });
 test('bulk source touch preserves XML when URL metadata unchanged (bounded write overhead)',async()=>{
