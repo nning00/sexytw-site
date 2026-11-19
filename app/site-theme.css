@@ -694,24 +694,29 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
   html { scroll-behavior: auto; }
 }
 
-/* Cream Pink Love Bubbles — public storefront only; leaves the CMS palette intact. */
+/* Cherry Velvet — public storefront only; leaves the CMS palette intact. */
 body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page, .city-page, .detail-page, .profile-detail-page, .legal-page, .not-found-page))) {
-  --bubble-surface: #fff8f1;
-  --bubble-panel: #fbede6;
-  --bubble-petal: #f5ddd5;
-  --bubble-ink: #44282a;
-  --bubble-muted: #785249;
-  --bubble-accent: #9d4555;
-  --bubble-hover: #823446;
-  --bubble-edge: #eaccc3;
-  --bubble-control-edge: #aa6c68;
-  --bubble-halo: #bd76682e;
-  --bubble-paper: #fffdfa;
+  --bubble-surface: #230911;
+  --bubble-panel: #35121e;
+  --bubble-petal: #4c1d2c;
+  --bubble-ink: #fff4e8;
+  --bubble-muted: #d5b7b6;
+  --bubble-accent: #c72d4b;
+  --bubble-hover: #ffbdc6;
+  --bubble-edge: #704250;
+  --bubble-control-edge: #ba8c88;
+  --bubble-halo: #13030866;
+  --bubble-paper: #fff8ef;
+  --electric-action-ink: #fff8ef;
+  --electric-action-hover: #a91f3c;
+  /* Static satin folds and a fine damask motif; inline SVG makes no external requests. */
+  --electric-flow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 720' fill='none'%3E%3Cg stroke='%23e5c5a7' stroke-width='1.5' opacity='.16'%3E%3Cpath d='M620-100C280 160 1120 200 740 440S780 720 1280 820'/%3E%3Cpath d='M652-100C312 160 1152 200 772 440S812 720 1312 820'/%3E%3Cpath d='M684-100C344 160 1184 200 804 440S844 720 1344 820'/%3E%3Cpath d='M716-100C376 160 1216 200 836 440S876 720 1376 820'/%3E%3C/g%3E%3C/svg%3E");
+  --electric-thread: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160' fill='none'%3E%3Cg stroke='%23e5c5a7' stroke-width='.8' opacity='.12'%3E%3Cpath d='M80 12C58 44 58 54 80 74C102 54 102 44 80 12ZM80 74C50 50 20 62 16 80C44 84 62 92 80 74ZM80 74C110 50 140 62 144 80C116 84 98 92 80 74ZM80 74C58 100 62 122 80 148C98 122 102 100 80 74Z'/%3E%3Cpath d='M80 0L160 80L80 160L0 80Z' opacity='.6'/%3E%3C/g%3E%3C/svg%3E");
   --bubble-card-radius: 1.5rem;
   --bubble-pill: 999px;
   --ink: var(--bubble-ink);
   --muted: var(--bubble-muted);
-  --rose: var(--bubble-accent);
+  --rose: var(--bubble-hover);
   --deep-rose: var(--bubble-hover);
   --blush: var(--bubble-petal);
   --pale: var(--bubble-panel);
@@ -724,7 +729,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   --mint: var(--bubble-panel);
   --sky: var(--bubble-panel);
   --butter: var(--bubble-petal);
-  --teal: var(--bubble-accent);
+  --teal: var(--bubble-hover);
   --teal-deep: var(--bubble-hover);
 
   background-color: var(--cream);
@@ -785,14 +790,14 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
 
   & :is(.nav-cta, .button.primary, .floating-line) {
     background: var(--bubble-accent);
-    color: var(--bubble-paper);
+    color: var(--electric-action-ink);
     border-color: var(--bubble-accent);
     box-shadow: none;
   }
 
   & :is(.nav-cta, .button.primary, .floating-line):hover {
-    background: var(--bubble-hover);
-    color: var(--bubble-paper);
+    background: var(--electric-action-hover);
+    color: var(--electric-action-ink);
     border-color: var(--bubble-hover);
   }
 
@@ -941,36 +946,6 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
 
   & .home-page .hero-orbit-dot { fill: var(--pale); }
 
-  & .home-page .hero-love-stamp {
-    position: absolute;
-    inset: auto 4% 5% auto;
-    z-index: 1;
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: .25rem;
-    width: clamp(5rem, 10vw, 8rem);
-    aspect-ratio: 1;
-    border: 1px solid var(--bubble-control-edge);
-    border-radius: 50%;
-    outline: .25rem solid var(--bubble-paper);
-    background: var(--bubble-petal);
-    color: var(--bubble-hover);
-    box-shadow: 0 8px 16px var(--bubble-halo);
-    text-align: center;
-    transform: rotate(-13deg);
-    pointer-events: none;
-  }
-
-  & .home-page .hero-love-stamp span {
-    font: 700 .75rem/1.2 var(--tw-font-body);
-    letter-spacing: .07em;
-  }
-
-  & .home-page .hero-love-stamp strong {
-    font: 700 clamp(.875rem, 1.5vw, 1.25rem)/1.25 var(--tw-font-display);
-  }
-
   & .home-page .tw-discover {
     grid-template-columns: minmax(0, .8fr) minmax(0, 1.65fr);
     align-items: start;
@@ -1037,7 +1012,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
 
   & .tw-region-title:is(:hover, :focus-visible) > span {
     background: var(--bubble-accent);
-    color: var(--bubble-paper);
+    color: var(--electric-action-ink);
   }
 
   & .tw-city-links a {
@@ -1103,16 +1078,16 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     text-underline-offset: .3em;
   }
   & .article-category-tabs { background: var(--bubble-paper); border-radius: 1rem; }
-  & .article-category-tabs a:is(.active, :hover) { background: var(--bubble-accent); color: var(--bubble-paper); }
+  & .article-category-tabs a:is(.active, :hover) { background: var(--bubble-accent); color: var(--electric-action-ink); }
   & .article-context-links a:hover { background: var(--bubble-petal); border-color: var(--bubble-control-edge); }
   & .profile-carousel-stage { border-radius: 1rem; }
   & .profile-carousel-arrow { color: var(--bubble-paper); background: var(--bubble-ink); backdrop-filter: none; }
   & .profile-carousel-arrow:hover { background: var(--bubble-hover); }
 
   & .age-gate,
-  & .mobile-drawer-backdrop { background: color-mix(in srgb, var(--bubble-ink) 74%, transparent); backdrop-filter: none; }
+  & .mobile-drawer-backdrop { background: #18060cc7; backdrop-filter: none; }
   & .age-card { background: var(--cream); border-color: var(--line); }
-  & .age-mark { background: var(--bubble-accent); color: var(--bubble-paper); }
+  & .age-mark { background: var(--bubble-accent); color: var(--electric-action-ink); }
 
   & .site-footer {
     color: var(--muted);
@@ -1134,6 +1109,162 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
     text-decoration: underline;
     text-underline-offset: .2em;
   }
+
+  /* Velvet editorial: serif headings and a matte burgundy/champagne frame. */
+  & :is(.home-page, .region-page, .city-page, .article-center, .profile-detail-page) :is(h1, h2, h3) {
+    font-family: var(--tw-font-display);
+    font-weight: 700;
+    letter-spacing: .01em;
+  }
+  & .home-page .hero {
+    position: relative;
+    isolation: isolate;
+    background: var(--electric-flow) center / cover no-repeat,
+      var(--electric-thread) center / 15rem 15rem repeat,
+      radial-gradient(ellipse at 85% 22%, #a42d4844, transparent 60%), var(--cream);
+  }
+  & :is(.article-center, .article-page, .region-page, .city-page, .detail-page, .profile-detail-page, .legal-page) {
+    background-image: var(--electric-thread);
+    background-size: 15rem 15rem;
+  }
+  & .home-page .tw-discover {
+    position: relative;
+    isolation: isolate;
+  }
+  & .home-page .tw-discover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--electric-thread);
+    background-size: 15rem 15rem;
+  }
+  & .home-page :is(.gallery-section, .faq) {
+    background-image: var(--electric-thread);
+    background-size: 15rem 15rem;
+  }
+  & .home-page .hero-showcase::after {
+    display: none;
+    pointer-events: none;
+  }
+  & .home-page .hero h1 {
+    font-size: clamp(2.75rem, 5.4vw, 5rem);
+    color: var(--ink);
+    letter-spacing: -.025em;
+  }
+  & .home-page .hero h1::first-line { color: var(--bubble-paper); }
+  & .home-page .hero .eyebrow {
+    color: #e5c5a7;
+    border-color: var(--bubble-control-edge);
+    background: transparent;
+    letter-spacing: .12em;
+  }
+  & .home-page .hero-text { color: var(--muted); }
+  & .home-page .hero-showcase { padding-block: 1.5rem 3.5rem; }
+  & .home-page .hero-photo {
+    background: var(--pale);
+    border: .375rem solid #4c1d2c;
+    border-radius: 8rem 8rem 1rem 1rem;
+    box-shadow: 0 0 0 1px #e5c5a7, 0 0 0 8px #35121e, 0 0 0 9px #8f6159, 0 24px 48px var(--bubble-halo);
+  }
+  & .home-page .hero-sun::before {
+    background: var(--bubble-petal);
+    border-color: #8f6159;
+    box-shadow: none;
+  }
+  & .home-page .hero-sun::after {
+    display: none;
+  }
+  & .home-page .hero-orbit { display: none; }
+  & .home-page .tw-discover { border-bottom: 1px solid var(--line); }
+  & .home-page .tw-discover h2 { max-inline-size: 10em; }
+  & .home-page .tw-destination-grid article { border-radius: 1.5rem; }
+  & .home-page .tw-destination-grid article:nth-child(even) {
+    border-radius: 1.5rem;
+    border-color: #8f6159;
+    background: var(--bubble-petal);
+  }
+  & .home-page .tw-destination-grid article:nth-child(odd) { border-radius: 1.5rem; }
+  & .home-page .tw-region-number {
+    background: transparent;
+    color: #e5c5a7;
+    border-color: var(--bubble-control-edge);
+    border-radius: 50%;
+  }
+  & .tw-region-title > span { color: #4c1d2c; }
+  & .tw-region-title:is(:hover, :focus-visible) > span { color: var(--bubble-paper); }
+  & .tw-city-links a { color: var(--ink); }
+  & .home-page .tw-region-title { font-size: 1.5rem; }
+  & :is(.article-center-card, .city-card, .profile-card, .profile-info, .profile-summary > div,
+    .article-related, .article-related-grid > a, .article-category-tabs,
+    .home-page .service-card:nth-child(n), .home-page .faq-list details:nth-child(n),
+    .region-rules li, .profile-description, .profile-carousel, .not-found-card) {
+    background: var(--pale);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  & :is(.article-center-card, .city-card, .profile-card):hover { border-color: var(--bubble-accent); }
+  & .article-center-card :is(h2, h3), & .profile-info h2 { color: var(--ink); }
+  & .article-center-card p { color: var(--muted); }
+  & .home-page .gallery-item[class*="item-"] { border: 1px solid var(--line); }
+  & :is(.detail-line-cta, .drawer-tabs button.active) {
+    color: var(--electric-action-ink);
+    background: var(--bubble-accent);
+    border-color: var(--bubble-accent);
+  }
+  & .detail-line-cta:hover { color: var(--electric-action-ink); background: var(--electric-action-hover); }
+  & :is(.region-dropdown.is-open .region-dropdown-trigger, .region-dropdown-trigger:hover) {
+    color: var(--bubble-hover);
+    background: var(--bubble-petal);
+  }
+  & .drawer-search input { color: var(--ink); background: var(--cream); }
+  & .drawer-search input::placeholder { color: var(--muted); opacity: 1; }
+  & .drawer-list a:hover { color: var(--bubble-hover); background: var(--pale); }
+  & .profile-carousel-arrow { color: #4c1d2c; background: var(--bubble-paper); }
+  & .profile-carousel-arrow:hover { color: var(--electric-action-ink); background: var(--bubble-accent); }
+  & .site-footer { background: #18060c; }
+  & .home-page .contact.section {
+    background: var(--bubble-petal) var(--electric-thread) center / 15rem 15rem;
+    color: var(--bubble-paper);
+    border-color: var(--bubble-control-edge);
+    border-radius: 2rem;
+  }
+  & .home-page .contact :is(h2, p) { color: var(--electric-action-ink); }
+  & .home-page .contact .button.primary {
+    color: var(--bubble-paper);
+    background: var(--bubble-accent);
+    border-color: var(--bubble-accent);
+  }
+  & .home-page .contact .button.primary:hover { background: var(--electric-action-hover); }
+  & .home-page .contact :focus-visible { outline-color: var(--bubble-paper); }
+
+  /* Long-form content gets its own light reading palette; storefront stays dark. */
+  & :is(.article-shell, .legal-shell, .detail-copy) {
+    --ink: #411a24;
+    --muted: #72545a;
+    --cream: #fff8ef;
+    --pale: #f3e5dc;
+    --line: #d7bdb1;
+    --rose: #a51e3a;
+    --deep-rose: #8d1832;
+    --teal: #a51e3a;
+    --teal-deep: #8d1832;
+    --berry: #411a24;
+    --bubble-ink: #411a24;
+    --bubble-muted: #72545a;
+    --bubble-hover: #a51e3a;
+    --bubble-control-edge: #9d6b70;
+    color: var(--ink);
+    background: var(--cream);
+  }
+  & :is(.article-shell, .legal-shell, .detail-copy) :is(h1, h2, h3, h4) { color: var(--ink); }
+  & .article-toc { background: var(--pale); }
+  & .article-shell .article-context-links a:hover {
+    background: #efd3cc;
+    border-color: #9d6b70;
+  }
+  & :is(.article-shell, .legal-shell, .detail-copy) :focus-visible { outline-color: #a51e3a; }
 
   @media (min-width: 981px) {
     & .article-page .article-shell { padding-block-start: 2rem; }
@@ -1180,7 +1311,6 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
       border-width: .375rem;
     }
     & .home-page .tw-destination-grid { grid-template-columns: minmax(0, 1fr); }
-    & .home-page .hero-love-stamp { inset: auto 7% 7% auto; }
     & .site-footer .footer-bottom > div > a { min-block-size: var(--tw-touch-size); }
   }
 
@@ -1192,6 +1322,11 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   @media (prefers-contrast: more) {
     --bubble-control-edge: var(--bubble-hover);
     --bubble-edge: var(--bubble-muted);
-    & .home-page :is(.hero-sun, .hero-orbit, .hero-love-stamp) { display: none; }
+    & .home-page :is(.hero-sun, .hero-orbit) { display: none; }
+    & .home-page .hero { background: var(--cream); }
+    & :is(.article-center, .article-page, .region-page, .city-page, .detail-page, .profile-detail-page, .legal-page),
+    & .home-page :is(.gallery-section, .faq) { background-image: none; }
+    & .home-page .tw-discover::before,
+    & .home-page .hero-showcase::after { display: none; }
   }
 }
