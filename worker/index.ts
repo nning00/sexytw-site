@@ -5,6 +5,12 @@ import { applyArticleCanonical } from "../lib/article-canonical.mjs";
 import { dispatchProfileSync, safeDispatchFailure } from "../lib/profile-sync-dispatch.mjs";
 import { withPublicReadScope } from "../lib/public-read-scope.mjs";
 import { sitemapUnavailableResponse } from "../lib/live-sitemap.mjs";
+import { prebuiltSitemapResponse } from "../lib/prebuilt-sitemap.mjs";
+
+async function sitemapEdgeCache() {
+  try { return await caches.open("sexytw-sitemap-files-v1"); }
+  catch { return undefined; } // The persisted file, not this optional cache, is authoritative.
+}
 
 const worker = {
   async scheduled(controller: ScheduledController, env: Cloudflare.Env) {
@@ -39,7 +45,9 @@ const worker = {
     const visibilityPath = isProfileVisibilityPath(requestUrl.pathname);
     let rendered;
     try {
-      rendered = (publicHome || visibilityPath)
+      rendered = requestUrl.pathname === "/sitemap.xml"
+        ? { response: await prebuiltSitemapResponse(request, env, { fetchImpl: getOriginalFetch(), cache: await sitemapEdgeCache(), waitUntil: (pending: Promise<unknown>) => ctx.waitUntil(pending) }), serverTiming: "" }
+        : (publicHome || visibilityPath)
         ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
         : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
     } catch (error) {
