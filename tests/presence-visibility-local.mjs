@@ -18,7 +18,9 @@ await visible(['a','b']);rows[0].source_missing_at='2026-11-13T00:00:00Z';
 for(const instance of instances){cms=instance;await visible(['b']);} // no invalidation broadcast needed
 cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['b']);
 const sitemapClient=options=>{assert.equal(options.noStore,true);return{rpc(name){assert.equal(name,'sexytw_public_sitemap_v1');return{abortSignal:async()=>({error:null,data:{site:'sexytw',version:1,profiles:rows.filter(r=>r.status==='published'&&r.adult_review_status==='verified'&&!r.source_missing_at).map(r=>({slug:r.slug})),articles:[],cities:[],categories:[],services:[]}})}}}};
-const sitemap=compile('../app/sitemap.ts',{'@/lib/supabase/public':{createPublicClient:sitemapClient},'@/lib/live-sitemap.mjs':{readLiveSitemap}}).default;
+// Retain coverage of the original live metadata helper. The new persisted-file
+// route/Worker have separate real-runtime and Postgres atomic visibility tests.
+const sitemap=()=>readLiveSitemap(sitemapClient({noStore:true}),'https://sexytw.cc');
 assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),false);
 rows[0].source_missing_at=null;for(const instance of instances){cms=instance;await visible(['a','b']);}cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['a','b']);assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),true);
 assert.equal(await cms.getPublishedProfile('fixture-c'),null);assert.equal(await cms.getPublishedProfile('fixture-d'),null);
@@ -38,5 +40,6 @@ try {
  const noStore=publicModule.createPublicClient({noStore:true});await noStore.global.fetch('https://fixture.invalid',{cache:'force-cache'});assert.equal(init.cache,'no-store');
  assert.equal(publicModule.createPublicClient().global,undefined);
 } finally { globalThis.fetch=oldFetch;if(oldUrl===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_URL;else process.env.NEXT_PUBLIC_SUPABASE_URL=oldUrl;if(oldKey===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;else process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=oldKey; }
-for(const path of ['../app/profiles/[id]/page.tsx','../app/regions/[slug]/[city]/page.tsx','../app/sitemap.ts','../app/api/city-profiles/route.ts']){const source=readFileSync(new URL(path,import.meta.url),'utf8');assert.ok(source.includes('dynamic = "force-dynamic"'));assert.ok(source.includes('revalidate = 0'));}
+for(const path of ['../app/profiles/[id]/page.tsx','../app/regions/[slug]/[city]/page.tsx','../app/api/city-profiles/route.ts']){const source=readFileSync(new URL(path,import.meta.url),'utf8');assert.ok(source.includes('dynamic = "force-dynamic"'));assert.ok(source.includes('revalidate = 0'));}
+const sitemapRoute=readFileSync(new URL('../app/sitemap.xml/route.ts',import.meta.url),'utf8');assert.match(sitemapRoute,/dynamic = ['"]force-dynamic['"]/);assert(sitemapRoute.includes('revalidate = 0'));
 console.log('PASS real public-client configuration no-store and unrelated client unchanged; dynamic route contracts.');
