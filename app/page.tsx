@@ -101,9 +101,6 @@ export default async function Home() {
               />
             </picture>
           </div>
-          <div className="hero-love-stamp" aria-hidden="true">
-            <span>LOVE BUBBLES</span><strong>戀愛泡泡</strong>
-          </div>
         </div>
         <div className="hero-overlay" aria-hidden="true" />
       </section>
