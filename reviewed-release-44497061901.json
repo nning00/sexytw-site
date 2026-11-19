@@ -1,0 +1,9 @@
+{
+  "runId": "44497061901",
+  "sha": "7d48525f7d91a802ca75516f70bafba8af0025ba",
+  "artifactId": 14515836294,
+  "artifactDigest": "sha256:5d20d094b0be49c771fd5d7b19dfb4507fea403a07f863600c56925c99f085a4",
+  "previousDeployment": "77822187-062c-4b32-b8bd-1a880aa053e8",
+  "previousVersion": "4a3292f4-d3ab-4bd0-80f0-679423ef97bc",
+  "evidence": [{"phase":"baseline","previous":"4a3292f4-d3ab-4bd0-80f0-679423ef97bc","at":"2026-11-19T09:32:07.963Z","sha":"7d48525f7d91a802ca75516f70bafba8af0025ba"}]
+}
