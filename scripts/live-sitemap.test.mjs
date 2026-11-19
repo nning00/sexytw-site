@@ -37,8 +37,8 @@ test('timeouts and upstream errors expose no sensitive error or stale fallback',
 });
 function compileWorker(handler){
  const code=ts.transpileModule(readFileSync(new URL('../worker/index.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const imports={'vinext/server/fetch-handler':{default:handler},'vinext/shims/fetch-cache':{getOriginalFetch:()=>fetch},'../lib/article-canonical.mjs':{applyArticleCanonical(){}},'../lib/profile-sync-dispatch.mjs':{},'../lib/public-read-scope.mjs':{withPublicReadScope:async f=>({response:await f(),serverTiming:''})},'../lib/profile-visibility-cache.mjs':{isProfileVisibilityPath,applyProfileNoStore},'../lib/live-sitemap.mjs':{sitemapUnavailableResponse}};
- const exp={};new Function('exports','require',code)(exp,key=>{assert(key in imports,key);return imports[key]});return exp.default;
+ const imports={'vinext/server/fetch-handler':{default:handler},'vinext/shims/fetch-cache':{getOriginalFetch:()=>fetch},'../lib/article-canonical.mjs':{applyArticleCanonical(){}},'../lib/profile-sync-dispatch.mjs':{},'../lib/public-read-scope.mjs':{withPublicReadScope:async f=>({response:await f(),serverTiming:''})},'../lib/profile-visibility-cache.mjs':{isProfileVisibilityPath,applyProfileNoStore},'../lib/live-sitemap.mjs':{sitemapUnavailableResponse},'../lib/prebuilt-sitemap.mjs':{prebuiltSitemapResponse:request=>handler.fetch(request)}};
+ const exp={};new Function('exports','require','caches',code)(exp,key=>{assert(key in imports,key);return imports[key]},{open:async()=>({})});return exp.default;
 }
 test('actual Worker maps sitemap-only failures to no-store 503 and preserves successful XML/other routes',async()=>{
  const err=Error('private error');let handler={fetch:async()=>{throw err}};let worker=compileWorker(handler);
@@ -53,5 +53,5 @@ test('SQL contract is read-only invoker, explicit visibility and minimal fields;
  assert.match(sql,/STABLE SECURITY INVOKER SET search_path = ''/);assert(!/\b(?:INSERT|UPDATE|DELETE|TRUNCATE|SECURITY DEFINER)\b/i.test(sql));
  for(const s of ["status='published'","adult_review_status='verified'","source_missing_at IS NULL","r.published AND c.published","settings.key='services'","FROM PUBLIC","TO anon,authenticated"])assert(sql.includes(s));
  for(const s of ['display_name','introduction','content','source_url','auth.users','storage.objects'])assert(!sql.includes(s));
- const source=readFileSync(new URL('../app/sitemap.ts',import.meta.url),'utf8');assert(source.includes('noStore: true'));assert(!source.includes('profileExamples'));assert(!source.includes('getPublishedArticles'));
+ const source=readFileSync(new URL('../app/sitemap.xml/route.ts',import.meta.url),'utf8');assert(source.includes("dynamic = 'force-dynamic'"));assert(source.includes('prebuiltSitemapResponse'));assert(!source.includes('profileExamples'));assert(!source.includes('getPublishedArticles'));
 });
