@@ -423,6 +423,8 @@ h4{overflow-wrap:anywhere;text-wrap:balance}
 .region-page>.section>.section-heading>p:last-child{max-width:620px;margin:0 auto;line-height:1.8}
 .city-page .profile-section{max-width:var(--tw-content-max);padding-top:36px}
 .profile-grid{gap:16px}
+/* Twenty city cards form five desktop rows; compact layouts keep two columns. */
+@media(min-width:981px){.city-page .profile-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .profile-info{padding:21px 20px 24px}
 .profile-info p{min-height:0;margin-block:12px 16px}
 .profile-load-more{padding-top:22px}
