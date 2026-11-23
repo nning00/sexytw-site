@@ -4,6 +4,7 @@ import { normalizeImagePosition } from "@/lib/image-position";
 import { mediaUrl } from "@/lib/media-url";
 import { publicReadOnce } from "@/lib/public-read-scope.mjs";
 import { queryHomeArticleCards } from "@/lib/home-article-cards.mjs";
+import { queryCityProfilePage } from "@/lib/city-pagination.mjs";
 export { mediaUrl } from "@/lib/media-url";
 
 export type CmsProfile = {
@@ -14,6 +15,14 @@ export type CmsProfile = {
 };
 
 export type CmsProfileIndex = Pick<CmsProfile, "id" | "slug" | "updated_at">;
+export type CmsCityCard = Pick<CmsProfile, "id" | "slug" | "display_name" | "card_image_path">;
+
+// Called after the page resolves a published city. Skip repeated region/city
+// lookups, but do not cache live profile visibility between requests.
+export function getPublishedCityCardPage(cityId: string, page: number) {
+  return publicReadOnce("profiles:city-page:" + JSON.stringify([cityId, page]),
+    () => queryCityProfilePage(createPublicClient({ noStore: true }), cityId, page)) as Promise<{ profiles: CmsCityCard[]; total: number }>;
+}
 
 export type CmsArticle = {
   id: string; slug: string; title: string; excerpt: string | null; category: string | null;

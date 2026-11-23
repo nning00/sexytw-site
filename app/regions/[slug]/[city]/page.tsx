@@ -6,8 +6,9 @@ import { notFound } from "next/navigation";
 import AgeGate from "@/components/AgeGate";
 import RegionNav from "@/components/RegionNav";
 import MobileMenu from "@/components/MobileMenu";
-import { profileExamples } from "@/data/profiles";
-import { getContentSettings, getPublishedProfilePageForCity, getSiteSettings, mediaUrl, profileCardPath } from "@/lib/cms";
+import { getContentSettings, getPublishedCityCardPage, getSiteSettings, mediaUrl } from "@/lib/cms";
+import { CITY_PAGE_SIZE, parseCityPage, cityPagePath } from "@/lib/city-pagination.mjs";
+import { publicReadOnce } from "@/lib/public-read-scope.mjs";
 import { createPublicClient } from "@/lib/supabase/public";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import JsonLd from "@/components/JsonLd";
@@ -18,21 +19,20 @@ import DetailHeaderActions from "@/components/DetailHeaderActions";
 const withCity = (text: string, city: string) => text.replace(/\{city\}/g, city);
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
-// Public city pages use ISR so crawlers and visitors can reuse the rendered
-// response instead of making the Worker rebuild every page on every request.
-// Admin saves and profile syncs explicitly invalidate the related cache tags.
+// Cards are read live: withdrawn profiles must not survive in rendered HTML.
+type CityPageProps = { params: Promise<{ slug: string; city: string }>; searchParams: Promise<{ page?: string | string[] }> };
 
 export function generateStaticParams(): Array<{ slug: string; city: string }> {
   // Cities are managed in Supabase, not the template's neutral example data.
-  // Keep ISR generation on demand; getLocation enforces current visibility.
+  // Resolve real published cities on demand; never revive neutral seed data.
   return [];
 }
 
-const getLocation = unstable_cache(async (regionSlug: string, citySlug: string) => {
+const getLocationCached = unstable_cache(async (regionSlug: string, citySlug: string) => {
   const supabase = createPublicClient();
   const loadRegion = () => supabase
       .from("regions")
-      .select("id,slug,name,english_name,summary,image_path,cities(slug,name,page_title,summary,gallery_title,gallery_description,seo_title,seo_description,published)")
+      .select("id,slug,name,english_name,summary,image_path,cities(id,slug,name,page_title,summary,gallery_title,gallery_description,seo_title,seo_description,published)")
       .eq("slug", regionSlug)
       .eq("published", true)
       .maybeSingle();
@@ -47,18 +47,21 @@ const getLocation = unstable_cache(async (regionSlug: string, citySlug: string) 
   // The database is the source of truth for public visibility. Falling back to
   // seed data here would make a hidden region accessible through its old URL.
   return { region: undefined, city: undefined };
-}, ["public-location"], { revalidate: 300, tags: ["regions"] });
+}, ["public-location-v2-city-id"], { revalidate: 300, tags: ["regions"] });
+const getLocation = (region: string, city: string) => publicReadOnce("profiles:city-location:" + JSON.stringify([region, city]), () => getLocationCached(region, city)) as ReturnType<typeof getLocationCached>;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string; city: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: CityPageProps): Promise<Metadata> {
   const { slug, city: citySlug } = await params;
+  const page = parseCityPage((await searchParams).page);
+  if (page === null) return {};
   const location = await getLocation(slug, citySlug);
   if (!location.region || !location.city) return {};
   return {
-    title: location.city.seo_title || `${location.city.name}成人形象介紹與預約諮詢`,
+    title: (location.city.seo_title || `${location.city.name}成人形象介紹與預約諮詢`) + (page > 1 ? `｜第 ${page} 頁` : ""),
     description: location.city.seo_description || `${location.city.name}地區的成人形象展示與合法預約諮詢資訊。重視隱私、成年限定、清楚溝通與雙方同意。`,
-    alternates: { canonical: `/regions/${slug}/${citySlug}` },
+    alternates: { canonical: cityPagePath(slug, citySlug, page) },
     openGraph: completeOpenGraph({
-      url: `/regions/${slug}/${citySlug}`,
+      url: cityPagePath(slug, citySlug, page),
       siteName: "寧兒外送茶",
       title: location.city.seo_title || `${location.city.name}成人形象介紹與預約諮詢`,
       description: location.city.seo_description || `${location.city.name}成人形象展示與合法預約諮詢。`,
@@ -68,29 +71,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function CityPage({ params }: { params: Promise<{ slug: string; city: string }> }) {
+export default async function CityPage({ params, searchParams }: CityPageProps) {
   const { slug, city: citySlug } = await params;
+  const page = parseCityPage((await searchParams).page);
+  if (page === null) notFound();
   const { region, city } = await getLocation(slug, citySlug);
   if (!region || !city) notFound();
-  const [profilePage, content, settings] = await Promise.all([getPublishedProfilePageForCity(slug, citySlug, 0, 24), getContentSettings(), getSiteSettings()]);
-  const displayedProfiles = profilePage.profiles.length ? profilePage.profiles : profileExamples;
-  const profileTotal = profilePage.profiles.length ? profilePage.total : profileExamples.length;
-  const profileCards: CityProfileCard[] = displayedProfiles.map((profile) => {
-    const isCms = "display_name" in profile;
-    const name = isCms ? profile.display_name : profile.name;
-    const image = isCms ? mediaUrl(profileCardPath(profile)) : profile.image;
-    const firstImageAlt = isCms
-      ? [...(profile.profile_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0]?.alt_text
-      : null;
+  const [profilePage, content, settings] = await Promise.all([getPublishedCityCardPage(city.id, page), getContentSettings(), getSiteSettings()]);
+  if (page > 1 && (!profilePage.profiles.length || (page - 1) * CITY_PAGE_SIZE >= profilePage.total)) notFound();
+  const profileTotal = profilePage.total;
+  const profileCards: CityProfileCard[] = profilePage.profiles.map((profile) => {
+    const name = profile.display_name;
+    const image = mediaUrl(profile.card_image_path);
     return {
       id: profile.id,
-      slug: isCms ? profile.slug : profile.id,
+      slug: profile.slug,
       name,
       image,
-      imageAlt: firstImageAlt || `${name}合法形象展示照片`,
+      imageAlt: `${name}合法形象展示照片`,
     };
   });
-  const cityUrl = `/regions/${region.slug}/${city.slug}`;
+  const cityUrl = cityPagePath(region.slug, city.slug, page);
   const cityStructuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -104,20 +105,13 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
         "@id": `${absoluteUrl(cityUrl)}#profiles`,
         name: `${city.name}形象介紹`,
         numberOfItems: profileTotal,
-        // Only describe the cards initially visible on the page. Including
-        // hundreds of hidden load-more cards creates a very large HTML/JSON-LD
-        // response and can exhaust a small Cloudflare Worker.
-        itemListElement: displayedProfiles.slice(0, 24).map((profile, index) => {
-          const isCms = "display_name" in profile;
-          const name = isCms ? profile.display_name : profile.name;
-          const image = isCms ? mediaUrl(profileCardPath(profile)) : profile.image;
-          const profileSlug = isCms ? profile.slug : profile.id;
+        itemListElement: profileCards.map((profile, index) => {
           return {
             "@type": "ListItem",
-            position: index + 1,
-            url: absoluteUrl(`/profiles/${profileSlug}`),
-            name,
-            image: imageStructuredData(image, `${name}形象照片`),
+            position: (page - 1) * CITY_PAGE_SIZE + index + 1,
+            url: absoluteUrl(`/profiles/${profile.slug}`),
+            name: profile.name,
+            image: imageStructuredData(profile.image, `${profile.name}形象照片`),
           };
         }),
       },
@@ -138,11 +132,11 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
       <section className="profile-section section">
         <div className="section-heading">
           <div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><Link href={`/regions/${region.slug}/overview`}>{region.name}</Link><span>/</span><strong>{city.name}</strong></div>
-          <h1>{city.page_title || `${city.name}地區精選資訊`}</h1>
+          <h1>{city.page_title || `${city.name}地區精選資訊`}{page > 1 && <span className="city-page-heading">第 {page} 頁</span>}</h1>
           <p>{city.gallery_description || `瀏覽${city.name}地區的成人形象介紹與公開資訊；實際內容與可安排情況，請透過正式聯絡方式確認。`}</p>
         </div>
         <div className="city-gallery-heading"><h2>{city.gallery_title || `${city.name}${content.labels.city_gallery_heading_suffix}`}</h2></div>
-        <CityProfileGrid profiles={profileCards} total={profileTotal} regionSlug={slug} citySlug={citySlug} />
+        <CityProfileGrid profiles={profileCards} total={profileTotal} page={page} regionSlug={slug} citySlug={citySlug} />
       </section>
 
       <section className="city-seo section">
