@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { articles } from "@/data/articles";
-import { articleParagraphs, getPublishedArticle, getPublishedArticles, getSiteSettings, mediaUrl } from "@/lib/cms";
+import { articleParagraphs, getPublishedArticle, getArticleCardIndex as getPublishedArticles, getSiteSettings, mediaUrl } from "@/lib/cms";
 import SiteHeader from "@/components/SiteHeader";
 import { articleCategoryName } from "@/components/ArticleCards";
 import JsonLd from "@/components/JsonLd";

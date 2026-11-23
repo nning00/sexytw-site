@@ -4,17 +4,17 @@ import ArticleCards from "@/components/ArticleCards";
 import ArticleCenterNav from "@/components/ArticleCenterNav";
 import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
-import { getArticleCategories, getHomeArticleCards, getPublishedArticles } from "@/lib/cms";
+import { getArticleCategories, getHomeArticleCards, getArticleCardIndex } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 
 const articlesTitle = "全部文章｜實用指南與熱門內容";
-const articlesDescription = "瀏覽新手指南、預約指南、安全指南、舒壓知識及其他實用文章。";
+const articlesDescription = "依新手指南、預約指南、安全指南與舒壓知識分類閱讀寧兒娛樂會館文章，了解初次諮詢、時間地點確認、隱私保護及行前準備。從適合自己的主題開始，預約前先掌握流程與注意事項。";
 export const metadata: Metadata = { title: articlesTitle, description: articlesDescription, alternates: { canonical: "/articles" }, openGraph: completeOpenGraph({ url: "/articles", title: articlesTitle, description: articlesDescription }) };
 export default async function ArticlesPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const featured = (await searchParams).view === "featured";
   const [displayed, categories] = await Promise.all([
-    featured ? getHomeArticleCards().catch(() => []) : getPublishedArticles(),
+    featured ? getHomeArticleCards() : getArticleCardIndex(),
     getArticleCategories(),
   ]);
   const title = featured ? "熱門文章" : "全部文章";

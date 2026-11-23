@@ -35,6 +35,15 @@ test('valid success preserves accounting, no raw summary output',async()=>{
 test('HTTP failure and transport exception never output raw data',async()=>{
  const x=await run(JSON.stringify({error:canary}),500);assert.equal(x.result.errors,3);assert(!x.logs.includes(canary));assert.equal(safeFailure(new Error(canary)),'sync-request-failed');
 });
+
+test('bulk absence stays a failure with a safe category, not a hidden green run',async()=>{
+ await assert.rejects(readSyncResponse(new Response(JSON.stringify({ok:false,error:'Bulk absence requires review'}),{status:409,headers:{'content-type':'application/json'}})),e=>{
+   assert(e instanceof SafeSyncResponseError);assert.match(e.message,/bulk_absence_review_required/);return true;
+ });
+ await assert.rejects(readSyncResponse(new Response(JSON.stringify({error:'Bulk absence requires review '+canary}),{status:409})),e=>{
+   assert.doesNotMatch(e.message,/bulk_absence_review_required/);assert(!e.message.includes(canary));return true;
+ });
+});
 test('lifecycle gates and retries remain byte-identical to baseline',()=>{
  const tail=s=>s.slice(s.indexOf('  // Three small requests'));
  assert.equal(createHash('sha256').update(tail(source)).digest('hex'),'5aed94ab62a9b9b405ea347c45986ef6e478bb3ed25e17a88b40a3555bb930ef');
@@ -47,7 +56,7 @@ test('actual scheduler: two partial batches give errors=6 and zero presence/fina
  const {shouldFinalize,syncBatchPayload}=await import('../lib/profile-sync-recovery.mjs');
  const start=source.indexOf('  const chunks = [];');
  const end=source.lastIndexOf('\n} else {');
- const code=source.slice(start,end);
+ const code='const importProfiles=profiles,pendingImages=[];\n'+source.slice(start,end);
  let calls=0,finalizers=0;const logs=[];
  const console=Object.fromEntries(['log','warn','error'].map(k=>[k,(...v)=>logs.push(v.join(' '))]));
  const fn=new AsyncFunction('profiles','postPayload','syncBatchPayload','commit','capturedAt','upsertOnly','presenceV3','selectedCity','limit','catalogue','console','responseDiagnostic','errorCategories','SafeSyncResponseError','safeFailure','shouldFinalize','finishSnapshot','setTimeout','safeBatchSummary',code);
@@ -87,7 +96,7 @@ test('repair transport diagnostics stay fixed-category and never echo details',(
 
 test('actual scheduler: uncertain transport delivery preserves batch error and blocks presence/cleanup',async()=>{
  const {shouldFinalize,syncBatchPayload}=await import('../lib/profile-sync-recovery.mjs');
- const code=source.slice(source.indexOf('  const chunks = [];'),source.lastIndexOf('\n} else {'));
+ const code='const importProfiles=profiles,pendingImages=[];\n'+source.slice(source.indexOf('  const chunks = [];'),source.lastIndexOf('\n} else {'));
  let calls=0,finalizers=0;const logs=[];
  const console=Object.fromEntries(['log','warn','error'].map(k=>[k,(...v)=>logs.push(v.join(' '))]));
  const fn=new AsyncFunction('profiles','postPayload','syncBatchPayload','commit','capturedAt','upsertOnly','presenceV3','selectedCity','limit','catalogue','console','responseDiagnostic','errorCategories','SafeSyncResponseError','safeFailure','shouldFinalize','finishSnapshot','setTimeout','safeBatchSummary',code);

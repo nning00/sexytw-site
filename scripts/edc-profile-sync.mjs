@@ -7,6 +7,7 @@ import { finishSnapshot } from "../lib/profile-sync-snapshot.mjs";
 import { recoveryMode, syncBatchPayload, shouldFinalize } from "../lib/profile-sync-recovery.mjs";
 import { assertPresenceCapability } from "../lib/presence-capability.mjs";
 import { postSyncRequest } from "../lib/sync-post-transport.mjs";
+import { partitionImportReadiness } from "../lib/sync-import-readiness.mjs";
 const presenceV3 = process.argv.includes("--presence-v3");
 const upsertOnly = recoveryMode(process.argv) || presenceV3;
 
@@ -203,6 +204,8 @@ if (selectedCity && !knownCities.has(selectedCity)) throw new Error(`不支援�
 const capturedAt = new Date().toISOString();
 const catalogue = await collectProfiles(selectedCity, limit);
 const { profiles } = catalogue;
+const { ready: importProfiles, pendingImages } = partitionImportReadiness(profiles);
+if (pendingImages.length) console.warn("來源尚未提供圖片，暫緩匯入（保留來源存在證據，不建立人物、不改既有狀態）：" + JSON.stringify({ count: pendingImages.length, sourceKeys: pendingImages.map(profile => profile.sourceKey) }));
 const syncableProfiles = profiles.filter(isVerifiedAdult);
 const pendingReviewProfiles = profiles.filter((profile) => !isVerifiedAdult(profile));
 const outputPath = join(projectRoot, "outputs", `edc-sync-${capturedAt.replace(/[:.]/g, "-")}.json`);
@@ -216,10 +219,10 @@ if (process.env.PROFILE_SYNC_ENDPOINT && process.env.PROFILE_SYNC_SECRET) {
   // Keep each request small because a batch also downloads several remote images.
   // This avoids cPanel/Cloudflare request timeouts during a full catalogue sync.
   const batchSize = 3;
-  for (let index = 0; index < profiles.length; index += batchSize) {
-    chunks.push(profiles.slice(index, index + batchSize));
+  for (let index = 0; index < importProfiles.length; index += batchSize) {
+    chunks.push(importProfiles.slice(index, index + batchSize));
   }
-  const totals = { create: 0, update: 0, repaired: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, warnings: 0, errors: 0 };
+  const totals = { create: 0, update: 0, repaired: 0, unchanged: 0, pendingReview: 0, skippedCity: 0, pendingSourceImages: pendingImages.length, warnings: 0, errors: 0 };
   async function syncChunk(chunk, index) {
     let response;
     let succeeded = false;

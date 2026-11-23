@@ -5,6 +5,7 @@ import { mediaUrl } from "@/lib/media-url";
 import { publicReadOnce } from "@/lib/public-read-scope.mjs";
 import { queryHomeArticleCards } from "@/lib/home-article-cards.mjs";
 import { queryCityProfilePage } from "@/lib/city-pagination.mjs";
+import { queryArticleCardIndex } from "@/lib/article-card-index.mjs";
 export { mediaUrl } from "@/lib/media-url";
 
 export type CmsProfile = {
@@ -35,7 +36,7 @@ export type CmsArticle = {
 
 export type ArticleCategory = { id: string; name: string; slug: string; sort_order: number; published: boolean; seo_title: string | null; seo_description: string | null };
 
-export type ArticleCard = Pick<CmsArticle, "id" | "slug" | "title" | "excerpt" | "category" | "cover_image_path" | "cover_image_alt"> & {
+export type ArticleCard = Pick<CmsArticle, "id" | "slug" | "title" | "excerpt" | "category" | "category_id" | "cover_image_path" | "cover_image_alt"> & {
   article_categories?: Pick<ArticleCategory, "name"> | null;
 };
 
@@ -271,10 +272,14 @@ export const getPublishedProfilePageForCity = (...args: Parameters<typeof getPub
 export const getPublishedProfile = (...args: Parameters<typeof getPublishedProfileUncached>) => publicReadOnce("profiles:getPublishedProfile:" + JSON.stringify(args), () => getPublishedProfileUncached(...args)) as ReturnType<typeof getPublishedProfileUncached>;
 export const getRelatedProfiles = (...args: Parameters<typeof getRelatedProfilesUncached>) => publicReadOnce("profiles:getRelatedProfiles:" + JSON.stringify(args), () => getRelatedProfilesUncached(...args)) as ReturnType<typeof getRelatedProfilesUncached>;
 export const getPublishedArticles = unstable_cache(getPublishedArticlesUncached, ["published-articles"], { ...cacheOptions, tags: ["articles"] });
+const cachedArticleCardIndex = unstable_cache(async (limit?: number) => queryArticleCardIndex(createPublicClient(), limit) as Promise<ArticleCard[]>, ["article-card-index-v1"], { ...cacheOptions, tags: ["articles", "article-categories"] });
+export const getArticleCardIndex = (limit?: number) => publicReadOnce("articles:cards:" + JSON.stringify(limit ?? null), () => cachedArticleCardIndex(limit)) as Promise<ArticleCard[]>;
 const cachedPublicNavigation = unstable_cache(getPublicNavigationUncached, ["public-navigation"], { ...cacheOptions, tags: ["regions", "articles"] });
 export const getPublicNavigation = () => publicReadOnce("cms_navigation", cachedPublicNavigation) as ReturnType<typeof cachedPublicNavigation>;
-export const getPublishedArticle = unstable_cache(getPublishedArticleUncached, ["published-article"], { ...cacheOptions, tags: ["articles"] });
-export const getArticleCategories = unstable_cache(getArticleCategoriesUncached, ["article-categories"], { ...cacheOptions, tags: ["articles", "article-categories"] });
+const cachedPublishedArticle = unstable_cache(getPublishedArticleUncached, ["published-article"], { ...cacheOptions, tags: ["articles"] });
+export const getPublishedArticle = (slug: string) => publicReadOnce("articles:detail:" + slug, () => cachedPublishedArticle(slug)) as ReturnType<typeof cachedPublishedArticle>;
+const cachedArticleCategories = unstable_cache(getArticleCategoriesUncached, ["article-categories"], { ...cacheOptions, tags: ["articles", "article-categories"] });
+export const getArticleCategories = () => publicReadOnce("cms_article_categories", cachedArticleCategories) as ReturnType<typeof cachedArticleCategories>;
 export async function getSiteSettings() {
   return (await getPublicSettingsBundle()).settings;
 }
