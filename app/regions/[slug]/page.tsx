@@ -86,7 +86,7 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
     ],
   };
 
-  return <main className="region-page">
+  return <>
     <JsonLd data={structuredData} />
     <AgeGate />
     <header className="detail-header">
@@ -95,6 +95,7 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
       <DetailHeaderActions backHref="/" backLabel="返回首頁" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
     </header>
     <RegionNav />
+    <main className="region-page">
     <section className="region-hero">
       <div className="region-hero-image"><Image src={image} alt={`${region.name}專區形象照`} width={900} height={1200} priority unoptimized={image.startsWith("http")} sizes="(max-width: 700px) 200px, 300px" /></div>
       <div className="region-hero-copy">
@@ -120,6 +121,7 @@ export default async function RegionPage({ params }: { params: Promise<{ slug: s
         </Link>)}
       </div>
     </section>
-  </main>;
+    </main>
+  </>;
 }
 

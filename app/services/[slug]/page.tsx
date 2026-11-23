@@ -91,7 +91,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
     ],
   };
   return (
-    <main className="detail-page">
+    <>
       <JsonLd data={serviceStructuredData} />
       <header className="detail-header">
         <MobileMenu />
@@ -99,6 +99,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         <DetailHeaderActions backHref="/#services" backLabel="所有服務" lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
+      <main className="detail-page">
       <section className="detail-hero">
         <div className="detail-image"><Image src={serviceImage} alt={`${service.title}形象照`} fill priority unoptimized={serviceImage.startsWith("http")} sizes="(max-width: 800px) 100vw, 48vw" style={{ objectPosition: service.image_position }} /></div>
         <div className="detail-copy">
@@ -109,7 +110,8 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
       <section className="detail-related"><p className="eyebrow">EXPLORE MORE</p><h2>其他服務方式</h2><div className="mini-service-grid">{services.filter((item) => item.slug !== service.slug).map((item) => <Link href={`/services/${item.slug}`} key={item.slug}><span>{item.number}</span><strong>{item.title}</strong><i>→</i></Link>)}</div></section>
-    </main>
+      </main>
+    </>
   );
 }
 
