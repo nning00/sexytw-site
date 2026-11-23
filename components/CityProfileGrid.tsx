@@ -25,7 +25,7 @@ export default function CityProfileGrid({ profiles, total, page, regionSlug, cit
             alt={profile.imageAlt}
             fill
             preload={index === 0}
-            sizes="(max-width: 680px) 50vw, 33vw"
+            sizes="(max-width: 980px) 50vw, 25vw"
           />
         </div>
         <div className="profile-info">
