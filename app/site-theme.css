@@ -1218,7 +1218,7 @@ body:has(:where(main:is(.home-page, .article-center, .article-page, .region-page
   & :is(.article-center-card, .city-card, .profile-card, .profile-info, .profile-summary > div,
     .article-related, .article-related-grid > a, .article-category-tabs,
     .home-page .service-card:nth-child(n), .home-page .faq-list details:nth-child(n),
-    .region-rules li, .profile-description, .profile-carousel, .not-found-card) {
+    .region-rules li, .profile-description, .profile-carousel, .not-found-card, .mini-service-grid > a) {
     background: var(--pale);
     color: var(--ink);
     border-color: var(--line);
