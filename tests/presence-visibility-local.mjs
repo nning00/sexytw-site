@@ -5,16 +5,18 @@ import {withPublicReadScope,publicReadOnce} from '../lib/public-read-scope.mjs';
 import {isProfileVisibilityPath,applyProfileNoStore} from '../lib/profile-visibility-cache.mjs';
 import {readLiveSitemap} from '../lib/live-sitemap.mjs';
 import * as cache from 'vinext/shims/cache';
+import {queryCityProfilePage} from '../lib/city-pagination.mjs';
 cache.setDataCacheHandler(new cache.MemoryCacheHandler());
 let rows=[{id:'a',slug:'fixture-a',status:'published',adult_review_status:'verified',source_missing_at:null,profile_images:[]},{id:'b',slug:'fixture-b',status:'published',adult_review_status:'verified',source_missing_at:null,profile_images:[]},{id:'c',slug:'fixture-c',status:'archived',adult_review_status:'verified',source_missing_at:null},{id:'d',slug:'fixture-d',status:'published',adult_review_status:'pending',source_missing_at:null}];
 let queryCount=0;
 function client(options){if(options)assert.equal(options.noStore,true);return {from(table){let filters=[],start=0,end=9999,single=false;const q={select(){return q},eq(k,v){filters.push(r=>get(r,k)===v);return q},neq(k,v){filters.push(r=>get(r,k)!==v);return q},is(k,v){filters.push(r=>get(r,k)===v);return q},in(k,v){filters.push(r=>v.includes(get(r,k)));return q},order(){return q},range(a,b){start=a;end=b;return q},limit(n){end=n-1;return q},maybeSingle(){single=true;return q},then(resolve){queryCount++;let data=table==='regions'?[{id:'r',slug:'north',published:true,cities:[]}]:table==='cities'?[{id:'city',region_id:'r',slug:'city',published:true}]:rows.filter(r=>r.status==='published'&&r.adult_review_status==='verified').map(r=>table==='profiles'?r:{profile_id:r.id,city_id:'city',profiles:r});data=data.filter(r=>filters.every(f=>f(r)));const count=data.length;data=data.slice(start,end+1);return Promise.resolve({data:single?data[0]??null:structuredClone(data),count,error:null}).then(resolve)}};return q}}}
 function get(r,k){return k.split('.').reduce((v,p)=>v?.[p],r)}
 function compile(file,imports){const code=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('exports','require',code)(exports,n=>{if(!(n in imports))throw Error('Unexpected import '+n);return imports[n]});return exports}
-const makeCms=()=>compile('../lib/cms.ts',{'next/cache':cache,'@/lib/supabase/public':{createPublicClient:client},'@/lib/image-position':{normalizeImagePosition:x=>x},'@/lib/media-url':{mediaUrl:x=>x},'@/lib/public-read-scope.mjs':{publicReadOnce},'@/lib/home-article-cards.mjs':{queryHomeArticleCards:async()=>[]}});
+const makeCms=()=>compile('../lib/cms.ts',{'next/cache':cache,'@/lib/supabase/public':{createPublicClient:client},'@/lib/image-position':{normalizeImagePosition:x=>x},'@/lib/media-url':{mediaUrl:x=>x},'@/lib/public-read-scope.mjs':{publicReadOnce},'@/lib/home-article-cards.mjs':{queryHomeArticleCards:async()=>[]},'@/lib/city-pagination.mjs':{queryCityProfilePage}});
 const instances=[makeCms(),makeCms()];let cms=instances[0];
 async function visible(expected){assert.deepEqual((await cms.getPublishedProfiles()).map(x=>x.id),expected);assert.deepEqual((await cms.getPublishedProfilesForCity('north','city')).map(x=>x.id),expected);const page=await cms.getPublishedProfilePageForCity('north','city');assert.equal(page.total,expected.length);assert.deepEqual(page.profiles.map(x=>x.id),expected);assert.equal(Boolean(await cms.getPublishedProfile('fixture-a')),expected.includes('a'));assert.deepEqual((await cms.getRelatedProfiles('b')).map(x=>x.id),expected.filter(x=>x!=='b'));}
 await visible(['a','b']);rows[0].source_missing_at='2026-11-13T00:00:00Z';
+assert.deepEqual((await cms.getPublishedCityCardPage('city',1)).profiles.map(x=>x.id),['b']);
 for(const instance of instances){cms=instance;await visible(['b']);} // no invalidation broadcast needed
 cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['b']);
 const sitemapClient=options=>{assert.equal(options.noStore,true);return{rpc(name){assert.equal(name,'sexytw_public_sitemap_v1');return{abortSignal:async()=>({error:null,data:{site:'sexytw',version:1,profiles:rows.filter(r=>r.status==='published'&&r.adult_review_status==='verified'&&!r.source_missing_at).map(r=>({slug:r.slug})),articles:[],cities:[],categories:[],services:[]}})}}}};
@@ -24,6 +26,7 @@ const sitemap=()=>readLiveSitemap(sitemapClient({noStore:true}),'https://sexytw.
 assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),false);
 rows[0].source_missing_at=null;for(const instance of instances){cms=instance;await visible(['a','b']);}cache.revalidateTag('profiles',{expire:0});cache.revalidateTag('regions',{expire:0});await new Promise(r=>setTimeout(r,5));await visible(['a','b']);assert.equal((await sitemap()).some(x=>x.url.endsWith('/profiles/fixture-a')),true);
 assert.equal(await cms.getPublishedProfile('fixture-c'),null);assert.equal(await cms.getPublishedProfile('fixture-d'),null);
+assert.deepEqual((await cms.getPublishedCityCardPage('city',1)).profiles.map(x=>x.id),['a','b']);
 const detail=readFileSync(new URL('../app/profiles/[id]/page.tsx',import.meta.url),'utf8');assert.ok(detail.includes('if (!profile) notFound()'));
 console.log('PASS: actual CMS list/city/pagination/detail/related + sitemap under hide/reappearance; actual vinext MemoryCache invalidation; archived/pending excluded; detail notFound static contract. No rendered HTTP/CDN assertion.');
 
