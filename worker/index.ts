@@ -42,12 +42,13 @@ const worker = {
     }
 
     const publicHome = request.method === "GET" && requestUrl.pathname === "/";
+    const publicArticle = request.method === "GET" && /^\/articles(?:\/|$)/.test(requestUrl.pathname);
     const visibilityPath = isProfileVisibilityPath(requestUrl.pathname);
     let rendered;
     try {
       rendered = requestUrl.pathname === "/sitemap.xml"
         ? { response: await prebuiltSitemapResponse(request, env, { fetchImpl: getOriginalFetch(), cache: await sitemapEdgeCache(), waitUntil: (pending: Promise<unknown>) => ctx.waitUntil(pending) }), serverTiming: "" }
-        : (publicHome || visibilityPath)
+        : (publicHome || publicArticle || visibilityPath)
         ? await withPublicReadScope(() => handler.fetch(request, env, ctx))
         : { response: await handler.fetch(request, env, ctx), serverTiming: "" };
     } catch (error) {

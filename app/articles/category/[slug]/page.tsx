@@ -5,7 +5,7 @@ import ArticleCards from "@/components/ArticleCards";
 import ArticleCenterNav from "@/components/ArticleCenterNav";
 import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
-import { getArticleCategories, getPublishedArticles, getSiteSettings } from "@/lib/cms";
+import { getArticleCategories, getArticleCardIndex as getPublishedArticles, getSiteSettings } from "@/lib/cms";
 import { completeOpenGraph } from "@/lib/seo-metadata";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 

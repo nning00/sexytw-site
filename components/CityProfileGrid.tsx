@@ -1,6 +1,6 @@
 import Link from "next/link";
 import OptimizedMediaImage from "@/components/OptimizedMediaImage";
-import { CITY_PAGE_SIZE, cityPageNumbers, cityPagePath } from "@/lib/city-pagination.mjs";
+import { CITY_PAGE_SIZE, cityPageNumbers, cityPagePath, cityPageDirectory } from "@/lib/city-pagination.mjs";
 
 export type CityProfileCard = {
   id: string;
@@ -46,6 +46,12 @@ export default function CityProfileGrid({ profiles, total, page, regionSlug, cit
           <Link href={href(number)} prefetch={false} aria-label={`第 ${number} 頁${number === pages ? '（最後一頁）' : ''}`} aria-current={number === page ? "page" : undefined}>{number === pages && pages > 3 ? `末頁 ${number}` : number}</Link>
         </span>)}
       </div>
+      {pages > 5 && cityPageDirectory(pages).length > 0 && <details className="city-pagination-directory">
+        <summary>全部頁碼（共 {pages} 頁）</summary>
+        <div className="city-pagination-numbers">
+          {cityPageDirectory(pages).map(number => <Link key={number} href={href(number)} prefetch={false} aria-label={`前往第 ${number} 頁`} aria-current={number === page ? "page" : undefined}>{number}</Link>)}
+        </div>
+      </details>}
     </nav>}
   </div>;
 }
