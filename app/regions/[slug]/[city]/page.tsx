@@ -119,7 +119,7 @@ export default async function CityPage({ params, searchParams }: CityPageProps) 
   };
 
   return (
-    <main className="city-page">
+    <>
       <JsonLd data={cityStructuredData} />
       <AgeGate />
       <header className="detail-header">
@@ -128,7 +128,7 @@ export default async function CityPage({ params, searchParams }: CityPageProps) 
         <DetailHeaderActions backHref={`/regions/${region.slug}/overview`} backLabel={`返回${region.name}`} lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
-
+      <main className="city-page">
       <section className="profile-section section">
         <div className="section-heading">
           <div className="article-breadcrumbs"><Link href="/">首頁</Link><span>/</span><Link href={`/regions/${region.slug}/overview`}>{region.name}</Link><span>/</span><strong>{city.name}</strong></div>
@@ -149,7 +149,8 @@ export default async function CityPage({ params, searchParams }: CityPageProps) 
         <p>請透過 LINE 說明地區與方便聯絡的時間；是否能安排及合法內容，均以實際回覆為準。</p>
         <a className="button primary" href={settings.brand.line_url} target="_blank" rel="noopener noreferrer">加入 LINE 諮詢</a>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
 

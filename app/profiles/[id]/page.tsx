@@ -105,7 +105,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   };
 
   return (
-    <main className="profile-detail-page">
+    <>
       <JsonLd data={profileStructuredData} />
       <AgeGate />
       <header className="detail-header">
@@ -114,6 +114,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         <DetailHeaderActions backHref="/#gallery" backLabel="返回首頁相簿" backLink={<ProfileBackLink className="detail-back-link" />} lineUrl={settings.brand.line_url} lineLabel={settings.navigation.line_cta} />
       </header>
       <RegionNav />
+      <main className="profile-detail-page">
       <div className="profile-route-back"><ProfileBackLink /></div>
       <section className="profile-detail-hero">
         <ProfileGallery images={gallery} />
@@ -146,7 +147,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           })}
         </div>
       </section>}
-    </main>
+      </main>
+    </>
   );
 }
 

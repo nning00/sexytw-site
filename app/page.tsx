@@ -41,7 +41,7 @@ export default async function Home() {
   const heroDesktop = optimizedMediaUrl(mediaUrl(settings.homepage.hero_image), 1600, 84);
   const heroMobile = optimizedMediaUrl(mediaUrl(settings.homepage.hero_image_mobile), 800, 82);
   return (
-    <main className="home-page">
+    <>
       <JsonLd data={faqStructuredData} />
       <link rel="preload" as="image" href={heroMobile} media="(max-width: 700px)" fetchPriority="high" />
       <link rel="preload" as="image" href={heroDesktop} media="(min-width: 701px)" fetchPriority="high" />
@@ -61,7 +61,7 @@ export default async function Home() {
         </nav>
       </header>
       <RegionNav />
-
+      <main className="home-page">
       <section className="hero" id="top">
         <div className="hero-copy">
           <p className="eyebrow">{settings.brand.name} · TAIWAN</p>
@@ -220,7 +220,8 @@ export default async function Home() {
         <a className="button primary" href={settings.brand.line_url} target="_blank" rel="noopener noreferrer">{content.labels.line_cta}</a>
       </section>
 
-    </main>
+      </main>
+    </>
   );
 }
 
